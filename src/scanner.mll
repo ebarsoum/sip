@@ -1,115 +1,85 @@
-{ open Parser
+{ 
+  open Parser
   open Printf
- }
+}
 
 let newline    = '\n' | "\r\n"
 let whitespace = [' ' '\t']
 let digit      = ['0'-'9']
-let integer    = digit+
-let letter     = ['_' 'a'-'z' 'A'-'Z']
-let letdig     = letter | digit
-let identifier = letter letdig*
 let exp = 'e' ['-' '+']? digit+
-let float1 = digit+ '.' digit* exp?
-let float2 = digit+ exp
-let float3 = '.' digit+ exp?
-
+let float = digit+ '.' digit* exp? | digit+ exp | '.' digit+ exp?
 
 rule token = parse
-  newline				{ Lexing.new_line lexbuf; token lexbuf }
-  | whitespace			{ token lexbuf }
+  newline               { Lexing.new_line lexbuf; token lexbuf }
+  | whitespace          { token lexbuf }
   
-  (* compute_operators *)
-  | '+'					{ PLUS    }
-  | '-'					{ MINUS   }
-  | '*'					{ TIMES   }
-  | '/'					{ DIVIDES  }
-  | "*."				{ MTIMES  }
-  | '%'					{ MODE    }
- 
- (* arithmetic_operator *)
-  | "!="				{ NEQ     }
-  | '<'					{ LT      }
-  | "<="				{ LEQ     }
-  | '>'					{ GT      }
-  | ">="				{ GEQ     }
-  | "=="				{ EQ      }
- 
- (* matrix_operator *)
-  | ".*"				{ CROPROD }
-  | "**"				{ CONVOLUTION }
-  | '''					{ TRANSPO }
-  | '"'					{ INVERSE }
-  
- (* assignment_operator *)
- 	| '='				{ ASSIGN  }
- 	| "+="				{ PLUSASS }
- 	| "-="				{ MINUASS }
- 	
- (* boolean_operator *)
- 	| "&&"				{ AND     }
- 	| "||"				{ OR      }
- 	| '!'				{ NOT     }
- 
- (* bar&trace *)
- 	| "|"			{ BAR }
- 	| "tr"		{ TRACE }
- 	
- (* build-in fun *)
-  | "submat" { SUBMAT }
-  | "sum"    { SUM }
-  | "Init"	{ INIT	}
- 	
- (* punctuation *)
-  | '('					{ LPAREN  }
-  | ')'					{ RPAREN  }
-  | '['					{ LBRACKET   }
-  | ']'					{ RBRACKET   }
-  | '{'					{ LBRACE  }
-  | '}'					{ RBRACE  }
-  | ';'					{ SEMICOLON    }
-  | ':'					{ COLON   }
-  | ','					{ COMMA   }
-  | '?'					{ QUES	}
-  | "[["					{ SLASH }
-  | "]]"					{ BACKSLASH }
- 	
- (* build-in_type *)
- 	| "int"				{ INT     }
- 	| "float"			{ FLOAT   }
-	| "intRowVec"		{ INTROWVEC	}
-	| "floatRowVec"		{ FLOATROWVEC	}
-	| "intColVec"		{ INTCOLVEC	}
-	| "floatColVec"		{ FLOATCOLVEC	}
-	| "intMat"			{ INTMAT	}
-	| "floatMat"		{ FLOATMAT	}
- 	
- (* control_flow *)
-	| "if"               { IF      }
-	| "else"             { ELSE    }
-	| "while"            { WHILE   }
-	| "for"              { FOR     }
-	| "in"				{ IN      }
-	| "endif"			{ ENDIF		}
-	| "return"			{ RETURN	}
-  
- (* selection *)
-  | "switch"           { SWITCH  }
-  
- (* I/O *)
- 	| "import"					{ IMPORT }
- 	| "export"					{ EXPORT }
- 		
- (* boolean_true_false *) 
-  | "true" as lxm            { TRUE(lxm)    }
-  | "false" as lxm            { FALSE(lxm)   } 	
-  | integer as lit     { INT_LITERAL(int_of_string lit) }
-  | (float1 | float2 | float3) as fl { FLOAT_LITERAL(float_of_string fl) }
-  | identifier as lxm { IDENTIFIER(lxm) }
+  (* Arithmetic operations *)
+  | '+'                 { PLUS    }
+  | '-'                 { MINUS   }
+  | '*'                 { TIMES   }
+  | '/'                 { DIVIDES }
+  | '%'                 { MODE    }
+  | '^'                 { CONVOLUTION }
+  | '='                 { ASSIGN  }
+
+ (* Logic operations *)
+  | "!="                { NEQ     }
+  | '<'                 { LT      }
+  | "<="                { LEQ     }
+  | '>'                 { GT      }
+  | ">="                { GEQ     }
+  | "=="                { EQ      }
+  | "&&"                { AND     }
+  | "||"                { OR      }
+  | '!'                 { NOT     }
+  | '?'                 { QUES    }
+
+  (* Bit operations *)
+   | '&'                { BITAND  }
+   | '|'                { BITOR   }
+   | '~'                { BITNOT  }
+
+ (* Scoping, accessors, and sequences *)
+  | '('                 { LPAREN    }
+  | ')'                 { RPAREN    }
+  | '['                 { LBRACKET  }
+  | ']'                 { RBRACKET  }
+  | '{'                 { LBRACE    }
+  | '}'                 { RBRACE    }
+  | ';'                 { SEMICOLON }
+  | ':'                 { COLON     }
+  | ','                 { COMMA     }
+    
+ (* Supported types *)
+    | "bool"            { BOOL    }
+    | "int"             { INT     }
+    | "uint"            { UINT    }
+    | "float"           { FLOAT   }
+    | "histogram"       { HIST    }
+    | "image"           { IMAGE   }
+    
+ (* Control flow and loop *)
+  | "true"             { TRUE    }
+  | "false"            { FALSE   }
+  | "if"               { IF      }
+  | "else"             { ELSE    }
+  | "for"              { FOR     }
+  | "in"               { IN      }
+  | "while"            { WHILE   }
+  | "return"           { RETURN  }
+
+  | ['0'-'9']+ as lxm { LITERAL(int_of_string lxm) }
+  | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
+  | float   as flt     { FLOAT_LITERAL(float_of_string flt) }
+  | "/*"                { comment lexbuf    }
+  | "//"                { line_comment lexbuf   }
   | eof                { EOF }
-  
-  | "/*"				{ comment lexbuf	}
-  
+  | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
+
 and comment = parse
- 	 "*/" { token lexbuf }
-	| _     { comment lexbuf }
+     "*/" { token lexbuf }
+    | _     { comment lexbuf }
+
+and line_comment = parse
+    newline { token lexbuf }
+    | _     { line_comment lexbuf }
