@@ -1,4 +1,7 @@
-(* Scanner.mll for SIP language *)
+(* 
+    Scanner.mll for SIP language 
+    
+*)
 
 { 
   open Parser
@@ -9,21 +12,21 @@ let digit = ['0'-'9']
 let exp   = 'e' ['-' '+']? digit+
 let float = digit+ '.' digit* exp? | digit+ exp | '.' digit+ exp?
 
-rule token = parse
-  [' ' '\t' '\r' '\n']  { token lexbuf } (* Whitespace *)
+rule token = parse  
+    [' ' '\t' '\r' '\n']  { token lexbuf } (* Whitespace *)
   
   (* Read and write image files *)
   | "<<"                 { READIMG  }
   | ">>"                 { WRITEIMG }
 
   (* Arithmetic operations *)
-  | '+'                 { PLUS    }
-  | '-'                 { MINUS   }
-  | '*'                 { TIMES   }
-  | '/'                 { DIVIDES }
-  | '%'                 { MODE    }
+  | '+'                 { PLUS        }
+  | '-'                 { MINUS       }
+  | '*'                 { TIMES       }
+  | '/'                 { DIVIDES     }
+  | '%'                 { MODE        }
   | '^'                 { CONVOLUTION }
-  | '='                 { ASSIGN  }
+  | '='                 { ASSIGN      }
 
   (* Logic operations *)
   | "!="                { NEQ     }
@@ -79,12 +82,12 @@ rule token = parse
   | "/*"               { comment lexbuf        }
   | "//"               { line_comment lexbuf   }
   | eof                { EOF }
-  | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
+  | _ as char          { raise (Failure("illegal character " ^ Char.escaped char)) }
 
 and comment = parse
-     "*/"   { token lexbuf   }
-    | _     { comment lexbuf }
+    "*/"   { token lexbuf   }
+  | _      { comment lexbuf }
 
 and line_comment = parse
     '\n' | "\r\n" { token lexbuf        }
-    | _           { line_comment lexbuf }
+  | _             { line_comment lexbuf }
