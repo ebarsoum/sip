@@ -1,4 +1,8 @@
-type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq
+(**)
+
+type op = Add | Sub | Mult | Div | Mod | Equal | Neq | Less | Leq | Greater | Geq
+
+type var = { name : string; type : string }
 
 type inline_expr =
     IntLiteral of int
@@ -27,12 +31,12 @@ type stmt =
 
 type func_decl = {
     fname : string;
-    formals : string list;
-    locals : string list;
+    formals : var list;
+    locals : var list;
     body : stmt list;
   }
 
-type program = string list * func_decl list
+type program = var list * func_decl list
 
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
