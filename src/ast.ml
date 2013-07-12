@@ -1,17 +1,21 @@
-(**)
+(*
+    ast.ml for SIP language
+*)
 
 type op = Add | Sub | Mult | Div | Mod | Equal | Neq | Less | Leq | Greater | Geq
 
-type var = { name : string; type : string }
+type var_decl = { name : string; type : string }
 
-type inline_expr =
+(* in_expr for the in operator *)
+type in_expr =
     IntLiteral of int
   | FloatLiteral of float
   | Id of string
-  | Binop of inline_expr * op * inline_expr
+  | Binop of in_expr * op * in_expr
 
 type expr =
-    IntLiteral of int
+    BoolLiteral of bool
+  | IntLiteral of int
   | FloatLiteral of float
   | Id of string
   | Binop of expr * op * expr
@@ -26,17 +30,17 @@ type stmt =
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | While of expr * stmt
-  | In of string * string list * inline_expr list
+  | In of string * string list * in_expr list
   | Ques of expr * stmt * stmt
 
 type func_decl = {
     fname : string;
-    formals : var list;
-    locals : var list;
+    formals : var_decl list;
+    locals : var_decl list;
     body : stmt list;
   }
 
-type program = var list * func_decl list
+type program = var_decl list * func_decl list
 
 let rec string_of_expr = function
     Literal(l) -> string_of_int l

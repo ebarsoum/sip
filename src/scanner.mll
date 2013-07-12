@@ -1,6 +1,5 @@
 (* 
-    Scanner.mll for SIP language 
-    
+    Scanner.mll for SIP language
 *)
 
 { 
@@ -16,8 +15,8 @@ rule token = parse
     [' ' '\t' '\r' '\n']  { token lexbuf } (* Whitespace *)
   
   (* Read and write image files *)
-  | "<<"                 { READIMG  }
-  | ">>"                 { WRITEIMG }
+  | "<<"                 { READ  }
+  | ">>"                 { WRITE }
 
   (* Arithmetic operations *)
   | '+'                 { PLUS        }

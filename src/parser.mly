@@ -1,12 +1,13 @@
 %{ open Ast %}
 
-%token READIMG WRITEIMG 
+%token READ WRITE 
 %token PLUS MINUS TIMES DIVIDES MODE CONVOLUTION ASSIGN
 %token NEQ LT LEQ GT GEQ EQ AND OR NOT QUES
 %token BITAND BITOR BITNOT
 %token LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE SEMICOLON COLON COMMA
 %token BOOL INT UINT FLOAT HIST IMAGE
 %token TRUE FALSE IF ELSE FOR IN WHILE RETURN BREAK
+%token <bool> BLITERAL
 %token <int> ILITERAL
 %token <float> FLITERAL
 %token <string> ID
@@ -33,9 +34,9 @@ program:
 fdecl:
    ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
      { { fname = $1;
-	 formals = $3;
-	 locals = List.rev $6;
-	 body = List.rev $7 } }
+	     formals = $3;
+	     locals = List.rev $6;
+	     body = List.rev $7 } }
 
 formals_opt:
     /* nothing */ { [] }
