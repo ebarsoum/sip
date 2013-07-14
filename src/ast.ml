@@ -4,7 +4,7 @@
 
 type op = Add | Sub | Mult | Div | Mod | Equal | Neq | Less | Leq | Greater | Geq
 
-type var_decl = { name : string; type : string }
+type var_decl = { vname : string; vtype : string }
 
 (* in_expr for the in operator *)
 type in_expr =

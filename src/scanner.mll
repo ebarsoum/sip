@@ -23,8 +23,8 @@ rule token = parse
   | '-'                 { MINUS       }
   | '*'                 { TIMES       }
   | '/'                 { DIVIDES     }
-  | '%'                 { MODE        }
-  | '^'                 { CONVOLUTION }
+  | '%'                 { MOD         }
+  | '^'                 { CONV        }
   | '='                 { ASSIGN      }
 
   (* Logic operations *)
@@ -73,6 +73,9 @@ rule token = parse
   | "while"            { WHILE   }
   | "return"           { RETURN  }
   | "break"            { BREAK   }
+
+  (* function *)
+  | "fun"              { FUN     }
   
   (* Identifier, types, comments and EOF. *)
   | digit+  as lxm     { ILITERAL(int_of_string lxm)   }

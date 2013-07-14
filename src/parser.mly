@@ -1,12 +1,12 @@
 %{ open Ast %}
 
 %token READ WRITE 
-%token PLUS MINUS TIMES DIVIDES MODE CONVOLUTION ASSIGN
+%token PLUS MINUS TIMES DIVIDES MOD CONV ASSIGN
 %token NEQ LT LEQ GT GEQ EQ AND OR NOT QUES
 %token BITAND BITOR BITNOT
 %token LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE SEMICOLON COLON COMMA
 %token BOOL INT UINT FLOAT HIST IMAGE
-%token TRUE FALSE IF ELSE FOR IN WHILE RETURN BREAK
+%token TRUE FALSE IF ELSE FOR IN WHILE RETURN BREAK FUN
 %token <bool> BLITERAL
 %token <int> ILITERAL
 %token <float> FLITERAL
@@ -15,11 +15,21 @@
 
 %nonassoc NOELSE
 %nonassoc ELSE
+
 %right ASSIGN
+
 %left EQ NEQ
-%left LT GT LEQ GEQ
+%left LT LEQ GT GEQ
+%left AND OR
+%left NOT
+
 %left PLUS MINUS
-%left TIMES DIVIDE
+%left TIMES DIVIDES MOD
+%left UMINUS
+
+%left BITAND BITOR
+%left BITNOT
+%left CONV
 
 %start program
 %type <Ast.program> program
@@ -32,11 +42,11 @@ program:
  | program fdecl { fst $1, ($2 :: snd $1) }
 
 fdecl:
-   ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
-     { { fname = $1;
-	     formals = $3;
-	     locals = List.rev $6;
-	     body = List.rev $7 } }
+   FUN ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
+     { { fname = $2;
+	     formals = $4;
+	     locals = List.rev $7;
+	     body = List.rev $8 } }
 
 formals_opt:
     /* nothing */ { [] }
@@ -51,7 +61,12 @@ vdecl_list:
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-   INT ID SEMI { $2 }
+    BOOL ID SEMI  { $2 }
+  | INT ID SEMI   { $2 }
+  | UINT ID SEMI  { $2 }
+  | FLOAT ID SEMI { $2 }
+  | HIST ID SEMI  { $2 }
+  | IMAGE ID SEMI { $2 }
 
 stmt_list:
     /* nothing */  { [] }
