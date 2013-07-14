@@ -6,7 +6,7 @@
 %token BITAND BITOR BITNOT
 %token LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE SEMICOLON COLON COMMA
 %token BOOL INT UINT FLOAT HIST IMAGE
-%token TRUE FALSE IF ELSE FOR IN WHILE RETURN BREAK FUN
+%token TRUE FALSE IF ELSE FOR IN WHILE RETURN BREAK FUN KERNEL
 %token <bool> BLITERAL
 %token <int> ILITERAL
 %token <float> FLITERAL
@@ -40,6 +40,7 @@ program:
    /* nothing */ { [], [] }
  | program vdecl { ($2 :: fst $1), snd $1 }
  | program fdecl { fst $1, ($2 :: snd $1) }
+ | program kdecl { fst $1, ($2 :: snd $1) }
 
 fdecl:
    FUN ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
@@ -53,20 +54,39 @@ formals_opt:
   | formal_list   { List.rev $1 }
 
 formal_list:
-    ID                   { [$1] }
-  | formal_list COMMA ID { $3 :: $1 }
+    fparam                   { [$1] }
+  | formal_list COMMA fparam { $3 :: $1 }
+
+fparam:
+    BOOL ID  { { vname = $2; vtype = $1} }
+  | INT ID   { { vname = $2; vtype = $1} }
+  | UINT ID  { { vname = $2; vtype = $1} }
+  | FLOAT ID { { vname = $2; vtype = $1} }
+  | HIST ID  { { vname = $2; vtype = $1} }
+  | IMAGE ID { { vname = $2; vtype = $1} }
+
+kdecl:
+   KERNEL ID LPAREN kformal_list RPAREN LBRACE vdecl_list stmt_list RBRACE
+     { { kname = $2;
+  	     kformals = $4;
+  	     klocals = List.rev $7;
+  	     kbody = List.rev $8 } }
+
+kformal_list:
+    ID                      { [$1] }
+  | kformal_list COMMA ID   { $3 :: $1 }
 
 vdecl_list:
     /* nothing */    { [] }
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-    BOOL ID SEMI  { $2 }
-  | INT ID SEMI   { $2 }
-  | UINT ID SEMI  { $2 }
-  | FLOAT ID SEMI { $2 }
-  | HIST ID SEMI  { $2 }
-  | IMAGE ID SEMI { $2 }
+    BOOL ID SEMI  { { vname = $2; vtype = $1} }
+  | INT ID SEMI   { { vname = $2; vtype = $1} }
+  | UINT ID SEMI  { { vname = $2; vtype = $1} }
+  | FLOAT ID SEMI { { vname = $2; vtype = $1} }
+  | HIST ID SEMI  { { vname = $2; vtype = $1} }
+  | IMAGE ID SEMI { { vname = $2; vtype = $1} }
 
 stmt_list:
     /* nothing */  { [] }

@@ -76,6 +76,7 @@ rule token = parse
 
   (* function *)
   | "fun"              { FUN     }
+  | "kernel"           { KERNEL  }
   
   (* Identifier, types, comments and EOF. *)
   | digit+  as lxm     { ILITERAL(int_of_string lxm)   }

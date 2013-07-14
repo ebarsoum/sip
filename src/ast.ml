@@ -40,7 +40,14 @@ type func_decl = {
     body : stmt list;
   }
 
-type program = var_decl list * func_decl list
+type kernel_decl = {
+    kname : string;
+    kformals : string list;
+    klocals : var_decl list;
+    kbody : stmt list;
+  }
+
+type program = var_decl list * func_decl list * kernel_decl list
 
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
