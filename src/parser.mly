@@ -98,31 +98,49 @@ stmt:
   | LBRACE stmt_list RBRACE { Block(List.rev $2) }
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
   | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7) }
+  | LPAREN expr RPAREN QUES stmt COLON stmt    { If($2, $5, $7) }
   | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt
      { For($3, $5, $7, $9) }
   | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
+  | ID IN LPAREN channels RPAREN SEMI FOR LBRACE channels_expr_opt RBRACE { In($1, $4, $9) }
+
+channels:
+    ID                      { [$1] }
+  | channels COMMA ID       { $3 :: $1 }
+
+channel_expr:
+    ID COLON expr           { Assign($1, $3) }
+
+channels_expr_opt:
+    /* nothing */       { [] }
+  | channels_expr_list  { List.rev $1 }
+
+channels_expr_list:
+    channel_expr                          { [$1] }
+  | channels_expr_list COMMA channel_expr { $3 :: $1 }
 
 expr_opt:
     /* nothing */ { Noexpr }
   | expr          { $1 }
 
 expr:
-    ILITERAL         { IntLiteral($1) }
-  | FLITERAL         { FloatLiteral($1) }
-  | ID               { Id($1) }
-  | expr PLUS   expr { Binop($1, Add,   $3) }
-  | expr MINUS  expr { Binop($1, Sub,   $3) }
-  | expr TIMES  expr { Binop($1, Mult,  $3) }
-  | expr DIVIDE expr { Binop($1, Div,   $3) }
-  | expr EQ     expr { Binop($1, Equal, $3) }
-  | expr NEQ    expr { Binop($1, Neq,   $3) }
-  | expr LT     expr { Binop($1, Less,  $3) }
-  | expr LEQ    expr { Binop($1, Leq,   $3) }
-  | expr GT     expr { Binop($1, Greater,  $3) }
-  | expr GEQ    expr { Binop($1, Geq,   $3) }
-  | ID ASSIGN expr   { Assign($1, $3) }
+    ILITERAL                { IntLiteral($1) }
+  | FLITERAL                { FloatLiteral($1) }
+  | ID                      { Id($1) }
+  | expr PLUS   expr        { Binop($1, Add,   $3) }
+  | expr MINUS  expr        { Binop($1, Sub,   $3) }
+  | MINUS expr %prec UMINUS { Unop(Neg, $2) }
+  | expr TIMES  expr        { Binop($1, Mult,  $3) }
+  | expr DIVIDE expr        { Binop($1, Div,   $3) }
+  | expr EQ     expr        { Binop($1, Equal, $3) }
+  | expr NEQ    expr        { Binop($1, Neq,   $3) }
+  | expr LT     expr        { Binop($1, Less,  $3) }
+  | expr LEQ    expr        { Binop($1, Leq,   $3) }
+  | expr GT     expr        { Binop($1, Greater,  $3) }
+  | expr GEQ    expr        { Binop($1, Geq,   $3) }
+  | ID ASSIGN   expr        { Assign($1, $3) }
   | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
-  | LPAREN expr RPAREN { $2 }
+  | LPAREN expr RPAREN      { $2 }
 
 actuals_opt:
     /* nothing */ { [] }

@@ -2,22 +2,18 @@
     ast.ml for SIP language
 *)
 
-type op = Add | Sub | Mult | Div | Mod | Equal | Neq | Less | Leq | Greater | Geq
+type op = Add | Sub | Mult | Div | Mod | Neg | Equal | Neq | Less | Leq | Greater | Geq
+
+type var_type = Bool | Int | UInt | Float | Histogram | Image
 
 type var_decl = { vname : string; vtype : string }
-
-(* in_expr for the in operator *)
-type in_expr =
-    IntLiteral of int
-  | FloatLiteral of float
-  | Id of string
-  | Binop of in_expr * op * in_expr
 
 type expr =
     BoolLiteral of bool
   | IntLiteral of int
   | FloatLiteral of float
   | Id of string
+  | Unop of op * expr
   | Binop of expr * op * expr
   | Assign of string * expr
   | Call of string * expr list
@@ -30,7 +26,7 @@ type stmt =
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | While of expr * stmt
-  | In of string * string list * in_expr list
+  | In of string * string list * expr list
   | Ques of expr * stmt * stmt
 
 type func_decl = {
