@@ -54,7 +54,8 @@ rule token = parse
   | ';'                 { SEMICOLON }
   | ':'                 { COLON     }
   | ','                 { COMMA     }
-    
+  | "->"                { ARROW     }
+
   (* Supported types *)
   | "bool"            { BOOL    }
   | "int"             { INT     }

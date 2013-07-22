@@ -44,10 +44,10 @@ program:
 
 fdecl:
    FUN ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
-     { { fname = $2;
+     { { fname   = $2;
 	     formals = $4;
-	     locals = List.rev $7;
-	     body = List.rev $8 } }
+	     locals  = List.rev $7;
+	     body    = List.rev $8 } }
 
 formals_opt:
     /* nothing */ { [] }
@@ -67,10 +67,10 @@ fparam:
 
 kdecl:
    KERNEL ID LPAREN kformal_list RPAREN LBRACE vdecl_list stmt_list RBRACE
-     { { kname = $2;
+     { { kname    = $2;
   	     kformals = $4;
-  	     klocals = List.rev $7;
-  	     kbody = List.rev $8 } }
+  	     klocals  = List.rev $7;
+  	     kbody    = List.rev $8 } }
 
 kformal_list:
     ID                      { [$1] }

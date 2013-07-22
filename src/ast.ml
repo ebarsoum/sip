@@ -2,8 +2,8 @@
     ast.ml for SIP language
 *)
 
-type op = Add | Sub | Mult | Div | Mod | Neg | Equal | Neq | Less | Leq | Greater | Geq
-
+type op = Add | Sub | Mult | Div | Mod | Equal | Neq | Less | Leq | Greater | Geq
+type unary_op = Neg
 type var_type = Bool | Int | UInt | Float | Histogram | Image
 
 type var_decl = { vname : string; vtype : string }
@@ -13,7 +13,7 @@ type expr =
   | IntLiteral of int
   | FloatLiteral of float
   | Id of string
-  | Unop of op * expr
+  | Unop of unary_op * expr
   | Binop of expr * op * expr
   | Assign of string * expr
   | Call of string * expr list
@@ -30,28 +30,33 @@ type stmt =
   | Ques of expr * stmt * stmt
 
 type func_decl = {
-    fname : string;
+    fname   : string;
     formals : var_decl list;
-    locals : var_decl list;
-    body : stmt list;
+    locals  : var_decl list;
+    body    : stmt list;
   }
 
 type kernel_decl = {
-    kname : string;
+    kname    : string;
     kformals : string list;
-    klocals : var_decl list;
-    kbody : stmt list;
+    klocals  : var_decl list;
+    kbody    : stmt list;
   }
 
 type program = var_decl list * func_decl list * kernel_decl list
 
 let rec string_of_expr = function
-    Literal(l) -> string_of_int l
+    BoolLiteral(l) -> string_of_bool l
+  | IntLiteral(l) -> string_of_int l
+  | FloatLiteral(l) -> string_of_float l
   | Id(s) -> s
+  | Unop(o, e) ->
+      (match o with
+	Neg -> "-") ^ string_of_expr e
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^
       (match o with
-	Add -> "+" | Sub -> "-" | Mult -> "*" | Div -> "/"
+	Add -> "+" | Sub -> "-" | Mult -> "*" | Div -> "/" | Mod -> "%"
       | Equal -> "==" | Neq -> "!="
       | Less -> "<" | Leq -> "<=" | Greater -> ">" | Geq -> ">=") ^ " " ^
       string_of_expr e2
@@ -72,11 +77,17 @@ let rec string_of_stmt = function
       "for (" ^ string_of_expr e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^
       string_of_expr e3  ^ ") " ^ string_of_stmt s
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
+  | In (v, a, el) -> "in (" ^ v ^ ", " ^ String.concat ", " a ^ ")\n{\n" ^ 
+      String.concat ";\n" (List.map string_of_expr el) ^ "}\n"
+  | Ques (e, s1, s2) -> "(" ^ string_of_expr e ^ ") ? " ^
+      string_of_stmt s1 ^ ":" ^ string_of_stmt s2
 
-let string_of_vdecl id = "int " ^ id ^ ";\n"
+let string_of_vdecl var = var.vtype ^ " " ^ var.vname ^ ";\n"
+
+let string_of_formal var = var.vtype ^ " " ^ var.vname
 
 let string_of_fdecl fdecl =
-  fdecl.fname ^ "(" ^ String.concat ", " fdecl.formals ^ ")\n{\n" ^
+  fdecl.fname ^ "(" ^ String.concat ", " (List.map string_of_formal fdecl.formals) ^ ")\n{\n" ^
   String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
