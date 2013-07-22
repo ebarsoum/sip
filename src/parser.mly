@@ -4,7 +4,7 @@
 %token PLUS MINUS TIMES DIVIDES MOD CONV ASSIGN
 %token NEQ LT LEQ GT GEQ EQ AND OR NOT QUES
 %token BITAND BITOR BITNOT
-%token LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE SEMICOLON COLON COMMA
+%token LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE SEMICOLON COLON COMMA SEMI ARROW
 %token BOOL INT UINT FLOAT HIST IMAGE
 %token TRUE FALSE IF ELSE FOR IN WHILE RETURN BREAK FUN KERNEL
 %token <bool> BLITERAL
@@ -40,7 +40,6 @@ program:
    /* nothing */ { [], [] }
  | program vdecl { ($2 :: fst $1), snd $1 }
  | program fdecl { fst $1, ($2 :: snd $1) }
- | program kdecl { fst $1, ($2 :: snd $1) }
 
 fdecl:
    FUN ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
@@ -58,12 +57,12 @@ formal_list:
   | formal_list COMMA fparam { $3 :: $1 }
 
 fparam:
-    BOOL ID  { { vname = $2; vtype = $1} }
-  | INT ID   { { vname = $2; vtype = $1} }
-  | UINT ID  { { vname = $2; vtype = $1} }
-  | FLOAT ID { { vname = $2; vtype = $1} }
-  | HIST ID  { { vname = $2; vtype = $1} }
-  | IMAGE ID { { vname = $2; vtype = $1} }
+    BOOL ID  { { vname = $2; vtype = "bool"} }
+  | INT ID   { { vname = $2; vtype = "int"} }
+  | UINT ID  { { vname = $2; vtype = "unsigned int"} }
+  | FLOAT ID { { vname = $2; vtype = "float"} }
+  | HIST ID  { { vname = $2; vtype = "hist"} }
+  | IMAGE ID { { vname = $2; vtype = "image"} }
 
 kdecl:
    KERNEL ID LPAREN kformal_list RPAREN LBRACE vdecl_list stmt_list RBRACE
@@ -81,12 +80,12 @@ vdecl_list:
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-    BOOL ID SEMI  { { vname = $2; vtype = $1} }
-  | INT ID SEMI   { { vname = $2; vtype = $1} }
-  | UINT ID SEMI  { { vname = $2; vtype = $1} }
-  | FLOAT ID SEMI { { vname = $2; vtype = $1} }
-  | HIST ID SEMI  { { vname = $2; vtype = $1} }
-  | IMAGE ID SEMI { { vname = $2; vtype = $1} }
+    BOOL ID SEMI  { { vname = $2; vtype = "bool"} }
+  | INT ID SEMI   { { vname = $2; vtype = "int"} }
+  | UINT ID SEMI  { { vname = $2; vtype = "unsigned int"} }
+  | FLOAT ID SEMI { { vname = $2; vtype = "float"} }
+  | HIST ID SEMI  { { vname = $2; vtype = "hist"} }
+  | IMAGE ID SEMI { { vname = $2; vtype = "image"} }
 
 stmt_list:
     /* nothing */  { [] }
@@ -131,7 +130,7 @@ expr:
   | expr MINUS  expr        { Binop($1, Sub,   $3) }
   | MINUS expr %prec UMINUS { Unop(Neg, $2) }
   | expr TIMES  expr        { Binop($1, Mult,  $3) }
-  | expr DIVIDE expr        { Binop($1, Div,   $3) }
+  | expr DIVIDES expr        { Binop($1, Div,   $3) }
   | expr EQ     expr        { Binop($1, Equal, $3) }
   | expr NEQ    expr        { Binop($1, Neq,   $3) }
   | expr LT     expr        { Binop($1, Less,  $3) }

@@ -43,7 +43,7 @@ type kernel_decl = {
     kbody    : stmt list;
   }
 
-type program = var_decl list * func_decl list * kernel_decl list
+type program = var_decl list * func_decl list
 
 let rec string_of_expr = function
     BoolLiteral(l) -> string_of_bool l
