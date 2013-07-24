@@ -7,9 +7,9 @@
   open Printf
 }
 
-let digit = ['0'-'9']
-let exp   = 'e' ['-' '+']? digit+
-let float = digit+ '.' digit* exp? | digit+ exp | '.' digit+ exp?
+let digit   = ['0'-'9']
+let exp     = 'e' ['-' '+']? digit+
+let float_t = digit+ '.' digit* exp? | digit+ exp | '.' digit+ exp?
 
 rule token = parse  
     [' ' '\t' '\r' '\n']  { token lexbuf } (* Whitespace *)
@@ -65,8 +65,6 @@ rule token = parse
   | "image"           { IMAGE   }
     
   (* Control flow and loop *)
-  | "true"             { TRUE    }
-  | "false"            { FALSE   }
   | "if"               { IF      }
   | "else"             { ELSE    }
   | "for"              { FOR     }
@@ -80,8 +78,10 @@ rule token = parse
   | "kernel"           { KERNEL  }
   
   (* Identifier, types, comments and EOF. *)
+  | "true"             { BLITERAL(true) }
+  | "false"            { BLITERAL(false)}
   | digit+  as lxm     { ILITERAL(int_of_string lxm)   }
-  | float   as flt     { FLITERAL(float_of_string flt) }  
+  | float_t as flt     { FLITERAL(float_of_string flt) }  
   | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
   | "/*"               { comment lexbuf        }
   | "//"               { line_comment lexbuf   }

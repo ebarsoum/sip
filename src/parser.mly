@@ -123,20 +123,28 @@ expr_opt:
   | expr          { $1 }
 
 expr:
-    ILITERAL                { IntLiteral($1) }
+    BLITERAL                { BoolLiteral($1) }
+  | ILITERAL                { IntLiteral($1) }
   | FLITERAL                { FloatLiteral($1) }
   | ID                      { Id($1) }
   | expr PLUS   expr        { Binop($1, Add,   $3) }
   | expr MINUS  expr        { Binop($1, Sub,   $3) }
-  | MINUS expr %prec UMINUS { Unop(Neg, $2) }
   | expr TIMES  expr        { Binop($1, Mult,  $3) }
-  | expr DIVIDES expr        { Binop($1, Div,   $3) }
-  | expr EQ     expr        { Binop($1, Equal, $3) }
-  | expr NEQ    expr        { Binop($1, Neq,   $3) }
-  | expr LT     expr        { Binop($1, Less,  $3) }
-  | expr LEQ    expr        { Binop($1, Leq,   $3) }
-  | expr GT     expr        { Binop($1, Greater,  $3) }
-  | expr GEQ    expr        { Binop($1, Geq,   $3) }
+  | expr DIVIDES expr       { Binop($1, Div,   $3) }
+  | expr MOD expr           { Binop($1, Mod,   $3) }
+  | expr NEQ expr           { Binop($1, Neq,   $3) }
+  | expr LT expr            { Binop($1, Lt,    $3) }
+  | expr LEQ expr           { Binop($1, Leq,   $3) }
+  | expr GT expr            { Binop($1, Gt,    $3) }
+  | expr GEQ expr           { Binop($1, Geq,   $3) }
+  | expr EQ expr            { Binop($1, Eq,    $3) }
+  | expr AND expr           { Binop($1, And,   $3) }
+  | expr OR expr            { Binop($1, Or,    $3) }
+  | expr NOT expr           { Binop($1, Not,   $3) }
+  | expr BITAND expr        { Binop($1, BitAnd,$3) }
+  | expr BITOR expr         { Binop($1, BitOr, $3) }
+  | expr BITNOT expr        { Binop($1, BitNot,$3) }
+  | MINUS expr %prec UMINUS { Unop(Neg, $2) }
   | ID ASSIGN   expr        { Assign($1, $3) }
   | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
   | LPAREN expr RPAREN      { $2 }

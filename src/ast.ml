@@ -2,8 +2,13 @@
     ast.ml for SIP language
 *)
 
-type op = Add | Sub | Mult | Div | Mod | Equal | Neq | Less | Leq | Greater | Geq
+type binary_op = Add | Sub | Mult | Div | Mod | 
+                 Neq | Lt | Leq | Gt | Geq | Eq | And | Or | Not |
+                 BitAnd | BitOr | BitNot
+
 type unary_op = Neg
+type image_op = Conv
+
 type var_type = Bool | Int | UInt | Float | Histogram | Image
 
 type var_decl = { vname : string; vtype : string }
@@ -14,7 +19,7 @@ type expr =
   | FloatLiteral of float
   | Id of string
   | Unop of unary_op * expr
-  | Binop of expr * op * expr
+  | Binop of expr * binary_op * expr
   | Assign of string * expr
   | Call of string * expr list
   | Noexpr
@@ -52,13 +57,14 @@ let rec string_of_expr = function
   | Id(s) -> s
   | Unop(o, e) ->
       (match o with
-	Neg -> "-") ^ string_of_expr e
+	Neg -> "-") ^ " " ^ string_of_expr e
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^
       (match o with
 	Add -> "+" | Sub -> "-" | Mult -> "*" | Div -> "/" | Mod -> "%"
-      | Equal -> "==" | Neq -> "!="
-      | Less -> "<" | Leq -> "<=" | Greater -> ">" | Geq -> ">=") ^ " " ^
+      | Neq -> "!=" | Lt -> "<" | Leq -> "<=" | Gt -> ">" | Geq -> ">=" | Eq -> "=="
+      | And -> "&&" | Or -> "||" | Not -> "!"
+      | BitAnd -> "&" | BitOr -> "|" | BitNot -> "~") ^ " " ^
       string_of_expr e2
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
   | Call(f, el) ->
