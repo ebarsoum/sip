@@ -1,6 +1,6 @@
-OBJS = scanner.cmo ast.cmo parser.cmo
+OBJS = scanner.cmo ast.cmo parser.cmo sip.cmo
 
-TARFILES = Makefile scanner.mll
+TARFILES = Makefile scanner.mll ast.ml parser.mly sip.ml
 
 sip : $(OBJS)
 	ocamlc -o sip $(OBJS)
@@ -29,3 +29,5 @@ parser.cmx: ast.cmx parser.cmi
 scanner.cmo: parser.cmi 
 scanner.cmx: parser.cmx 
 parser.cmi: ast.cmo 
+sip.cmo: scanner.cmo parser.cmi ast.cmo
+sip.cmx: scanner.cmx parser.cmx ast.cmx 
