@@ -2,9 +2,7 @@ open Printf
 
 type action = Ast | Compile | None
 
-let out_ast_file = "a.ast"
-let out_cc_file  = "a.cc"
-let out_cl_file  = "a.cl"
+let out_filename = "a"
 
 let fwrite name content =
 	let out = open_out name in
@@ -21,8 +19,8 @@ let main () =
     let program = Parser.program Scanner.token lexbuf in
     match action with
       Ast -> let listing = Ast.string_of_program program in
-               fwrite out_ast_file listing
-    | Compile -> fwrite out_cc_file "test"
+               fwrite (out_filename ^ ".ast") listing
+    | Compile -> fwrite (out_filename ^ ".cc") "test"
     | None -> print_string "None\n"
 
 let _ = main ()
