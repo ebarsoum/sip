@@ -4,7 +4,8 @@
 %token PLUS MINUS TIMES DIVIDES MOD CONV ASSIGN
 %token NEQ LT LEQ GT GEQ EQ AND OR NOT QUES
 %token BITAND BITOR BITNOT
-%token LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE SEMICOLON COLON COMMA SEMI ARROW
+%token LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE SEMICOLON COLON COMMA SEMI
+%token ARROW RANGE
 %token BOOL INT UINT FLOAT HIST IMAGE
 %token TRUE FALSE IF ELSE FOR IN WHILE RETURN BREAK FUN KERNEL
 %token <bool> BLITERAL
@@ -65,11 +66,11 @@ fparam:
   | IMAGE ID { { vname = $2; vtype = "image"} }
 
 kdecl:
-   KERNEL ID LPAREN kformal_list RPAREN LBRACE vdecl_list stmt_list RBRACE
-     { { kname    = $2;
-  	     kformals = $4;
-  	     klocals  = List.rev $7;
-  	     kbody    = List.rev $8 } }
+   KERNEL FUN ID LPAREN kformal_list RPAREN LBRACE vdecl_list stmt_list RBRACE
+     { { kname    = $3;
+  	     kformals = $5;
+  	     klocals  = List.rev $8;
+  	     kbody    = List.rev $9 } }
 
 kformal_list:
     ID                      { [$1] }

@@ -27,12 +27,14 @@ type expr =
 type stmt =
     Block of stmt list
   | Expr of expr
+  | Imop of string * image_op * string
   | Return of expr
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | While of expr * stmt
   | In of string * string list * expr list
   | Ques of expr * stmt * stmt
+  | VarDecl of var_decl
 
 type func_decl = {
     fname   : string;
@@ -75,6 +77,7 @@ let rec string_of_stmt = function
     Block(stmts) ->
       "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
   | Expr(expr) -> string_of_expr expr ^ ";\n";
+  | Imop(s, o, k) -> "conv(" ^ s ^ "' " ^ k ^ ");\n";
   | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n";
   | If(e, s, Block([])) -> "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
   | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
@@ -87,6 +90,7 @@ let rec string_of_stmt = function
       String.concat ";\n" (List.map string_of_expr el) ^ "}\n"
   | Ques (e, s1, s2) -> "(" ^ string_of_expr e ^ ") ? " ^
       string_of_stmt s1 ^ ":" ^ string_of_stmt s2
+  | VarDecl(v) -> v.vtype ^ " " ^ v.vname ^ ";\n"
 
 let string_of_vdecl var = var.vtype ^ " " ^ var.vname ^ ";\n"
 

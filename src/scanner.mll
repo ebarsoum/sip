@@ -55,6 +55,7 @@ rule token = parse
   | ':'                 { COLON     }
   | ','                 { COMMA     }
   | "->"                { ARROW     }
+  | ".."                { RANGE     }
 
   (* Supported types *)
   | "bool"            { BOOL    }
