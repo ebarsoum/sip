@@ -12,6 +12,7 @@
 %token <int> ILITERAL
 %token <float> FLITERAL
 %token <string> ID
+%token <string> SLITERAL
 %token EOF
 
 %nonassoc NOELSE
@@ -22,15 +23,14 @@
 %left EQ NEQ
 %left LT LEQ GT GEQ
 %left AND OR
-%left NOT
+%right NOT
 
 %left PLUS MINUS
 %left TIMES DIVIDES MOD
-%left UMINUS
+%right UMINUS
 
 %left BITAND BITOR
-%left BITNOT
-%left CONV
+%right BITNOT
 
 %start program
 %type <Ast.program> program
@@ -42,12 +42,28 @@ program:
  | program vdecl { ($2 :: fst $1), snd $1 }
  | program fdecl { fst $1, ($2 :: snd $1) }
 
+vdecl_list:
+    /* nothing */    { [] }
+  | vdecl_list vdecl { $2 :: $1 }
+  
+vdecl:
+    var_type ID SEMI  { { vname = $2; vtype = $1} }
+
+var_type:
+    BOOL  { Bool      }
+  | INT   { Int       }
+  | UINT  { UInt      }
+  | FLOAT { Float     }
+  | HIST  { Histogram }
+  | IMAGE { Image     }
+ 
 fdecl:
-   FUN ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
+   FUN ID LPAREN formals_opt RPAREN ftype_opt LBRACE vdecl_list stmt_list RBRACE
      { { fname   = $2;
 	     formals = $4;
-	     locals  = List.rev $7;
-	     body    = List.rev $8 } }
+	     locals  = List.rev $8;
+	     body    = List.rev $9;
+		 ftype   = $6 } }
 
 formals_opt:
     /* nothing */ { [] }
@@ -56,37 +72,19 @@ formals_opt:
 formal_list:
     fparam                   { [$1] }
   | formal_list COMMA fparam { $3 :: $1 }
-
+  
 fparam:
-    BOOL ID  { { vname = $2; vtype = "bool"} }
-  | INT ID   { { vname = $2; vtype = "int"} }
-  | UINT ID  { { vname = $2; vtype = "unsigned int"} }
-  | FLOAT ID { { vname = $2; vtype = "float"} }
-  | HIST ID  { { vname = $2; vtype = "hist"} }
-  | IMAGE ID { { vname = $2; vtype = "image"} }
+    var_type ID  { { vname = $2; vtype = $1} }
 
-kdecl:
-   KERNEL FUN ID LPAREN kformal_list RPAREN LBRACE vdecl_list stmt_list RBRACE
-     { { kname    = $3;
-  	     kformals = $5;
-  	     klocals  = List.rev $8;
-  	     kbody    = List.rev $9 } }
+ftype_opt:
+  /* nothing */ { FVoid }
+| ftype         { $1 }
 
-kformal_list:
-    ID                      { [$1] }
-  | kformal_list COMMA ID   { $3 :: $1 }
-
-vdecl_list:
-    /* nothing */    { [] }
-  | vdecl_list vdecl { $2 :: $1 }
-
-vdecl:
-    BOOL ID SEMI  { { vname = $2; vtype = "bool"} }
-  | INT ID SEMI   { { vname = $2; vtype = "int"} }
-  | UINT ID SEMI  { { vname = $2; vtype = "unsigned int"} }
-  | FLOAT ID SEMI { { vname = $2; vtype = "float"} }
-  | HIST ID SEMI  { { vname = $2; vtype = "hist"} }
-  | IMAGE ID SEMI { { vname = $2; vtype = "image"} }
+ftype:
+    BOOL  { FBool      }
+  | INT   { FInt       }
+  | UINT  { FUInt      }
+  | FLOAT { FFloat     }
 
 stmt_list:
     /* nothing */  { [] }
@@ -94,30 +92,17 @@ stmt_list:
 
 stmt:
     expr SEMI { Expr($1) }
-  | RETURN expr SEMI { Return($2) }
   | LBRACE stmt_list RBRACE { Block(List.rev $2) }
+  | ID CONV ID SEMI { Imop($1, Conv, $3) }
+  | ID READ SLITERAL SEMI { Imread($1, $3) }
+  | ID WRITE SLITERAL SEMI { Imwrite($1, $3) }
+  | RETURN expr SEMI { Return($2) }
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
   | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7) }
-  | LPAREN expr RPAREN QUES stmt COLON stmt    { If($2, $5, $7) }
   | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt
      { For($3, $5, $7, $9) }
   | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
-  | ID IN LPAREN channels RPAREN SEMI FOR LBRACE channels_expr_opt RBRACE { In($1, $4, $9) }
-
-channels:
-    ID                      { [$1] }
-  | channels COMMA ID       { $3 :: $1 }
-
-channel_expr:
-    ID COLON expr           { Assign($1, $3) }
-
-channels_expr_opt:
-    /* nothing */       { [] }
-  | channels_expr_list  { List.rev $1 }
-
-channels_expr_list:
-    channel_expr                          { [$1] }
-  | channels_expr_list COMMA channel_expr { $3 :: $1 }
+  | expr QUES expr COLON expr SEMI { Ques($1, $3, $5) }
 
 expr_opt:
     /* nothing */ { Noexpr }
@@ -148,7 +133,7 @@ expr:
   | MINUS expr %prec UMINUS { Unop(Neg, $2) }
   | ID ASSIGN   expr        { Assign($1, $3) }
   | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
-  | LPAREN expr RPAREN      { $2 }
+  | LPAREN expr RPAREN { $2 }
 
 actuals_opt:
     /* nothing */ { [] }

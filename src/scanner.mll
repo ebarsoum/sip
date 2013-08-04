@@ -7,12 +7,18 @@
   open Printf
 }
 
+let newline    = '\n' | "\r\n"
+let whitespace = [' ' '\t']
 let digit   = ['0'-'9']
 let exp     = 'e' ['-' '+']? digit+
+let int_t   = digit+
 let float_t = digit+ '.' digit* exp? | digit+ exp | '.' digit+ exp?
+let string_r = '\\'+ | [^ '"']
+let string_t = '"' string_r* '"'
 
 rule token = parse  
-    [' ' '\t' '\r' '\n']  { token lexbuf } (* Whitespace *)
+  newline				{ Lexing.new_line lexbuf; token lexbuf }
+  | whitespace			{ token lexbuf }
   
   (* Read and write image files *)
   | "<<"                 { READ  }
@@ -51,7 +57,7 @@ rule token = parse
   | ']'                 { RBRACKET  }
   | '{'                 { LBRACE    }
   | '}'                 { RBRACE    }
-  | ';'                 { SEMICOLON }
+  | ';'                 { SEMI      }
   | ':'                 { COLON     }
   | ','                 { COMMA     }
   | "->"                { ARROW     }
@@ -81,8 +87,9 @@ rule token = parse
   (* Identifier, types, comments and EOF. *)
   | "true"             { BLITERAL(true) }
   | "false"            { BLITERAL(false)}
-  | digit+  as lxm     { ILITERAL(int_of_string lxm)   }
+  | int_t  as lxm      { ILITERAL(int_of_string lxm)   }
   | float_t as flt     { FLITERAL(float_of_string flt) }  
+  | string_t as lxm    { SLITERAL(lxm) }
   | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
   | "/*"               { comment lexbuf        }
   | "//"               { line_comment lexbuf   }

@@ -11,7 +11,7 @@ type image_op = Conv
 
 type var_type = Bool | Int | UInt | Float | Histogram | Image
 
-type var_decl = { vname : string; vtype : string }
+type var_decl = { vname : string; vtype : var_type }
 
 type expr =
     BoolLiteral of bool
@@ -28,29 +28,41 @@ type stmt =
     Block of stmt list
   | Expr of expr
   | Imop of string * image_op * string
+  | Imread of string * string
+  | Imwrite of string * string
   | Return of expr
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | While of expr * stmt
   | In of string * string list * expr list
-  | Ques of expr * stmt * stmt
-  | VarDecl of var_decl
+  | Ques of expr * expr * expr
+
+type func_type = FVoid | FBool | FInt | FUInt | FFloat
 
 type func_decl = {
     fname   : string;
     formals : var_decl list;
     locals  : var_decl list;
     body    : stmt list;
-  }
-
-type kernel_decl = {
-    kname    : string;
-    kformals : string list;
-    klocals  : var_decl list;
-    kbody    : stmt list;
+	ftype   : func_type
   }
 
 type program = var_decl list * func_decl list
+
+let string_of_functype = function
+    FVoid -> "void"
+  | FBool -> "bool"
+  | FInt -> "int"
+  | FUInt -> "unsigned int"
+  | FFloat -> "float"
+
+let string_of_vartype = function
+    Bool -> "bool"
+  | Int -> "int"
+  | UInt -> "unsigned int"
+  | Float -> "float"
+  | Histogram -> "Histogram"
+  | Image -> "Image"
 
 let rec string_of_expr = function
     BoolLiteral(l) -> string_of_bool l
@@ -78,6 +90,8 @@ let rec string_of_stmt = function
       "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
   | Expr(expr) -> string_of_expr expr ^ ";\n";
   | Imop(s, o, k) -> "conv(" ^ s ^ "' " ^ k ^ ");\n";
+  | Imread(i, p) -> i ^ " = imread(" ^ p ^ ");\n";
+  | Imwrite(i, p) -> i ^ " = imwrite(" ^ p ^ ");\n";  
   | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n";
   | If(e, s, Block([])) -> "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
   | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
@@ -88,16 +102,14 @@ let rec string_of_stmt = function
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
   | In (v, a, el) -> "in (" ^ v ^ ", " ^ String.concat ", " a ^ ")\n{\n" ^ 
       String.concat ";\n" (List.map string_of_expr el) ^ "}\n"
-  | Ques (e, s1, s2) -> "(" ^ string_of_expr e ^ ") ? " ^
-      string_of_stmt s1 ^ ":" ^ string_of_stmt s2
-  | VarDecl(v) -> v.vtype ^ " " ^ v.vname ^ ";\n"
+  | Ques (e1, e2, e3) -> "(" ^ string_of_expr e1 ^ ") ? " ^
+      string_of_expr e2 ^ ":" ^ string_of_expr e3 ^ ";\n"
 
-let string_of_vdecl var = var.vtype ^ " " ^ var.vname ^ ";\n"
-
-let string_of_formal var = var.vtype ^ " " ^ var.vname
+let string_of_vdecl var = (string_of_vartype var.vtype) ^ " " ^ var.vname ^ ";\n"
 
 let string_of_fdecl fdecl =
-  fdecl.fname ^ "(" ^ String.concat ", " (List.map string_of_formal fdecl.formals) ^ ")\n{\n" ^
+  (string_of_functype fdecl.ftype) ^ " " ^
+  fdecl.fname ^ "(" ^ String.concat ", " (List.map string_of_vdecl fdecl.formals) ^ ")\n{\n" ^
   String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"

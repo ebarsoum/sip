@@ -1,7 +1,7 @@
 
-fun main()
-{
-    7 //; //int hsvImage;
-
+fun main() 
+{ 
+  image im1;
+  im1 << "c:\\test.jpg";
 }
 
