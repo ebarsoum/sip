@@ -92,6 +92,7 @@ stmt_list:
 
 stmt:
     expr SEMI { Expr($1) }
+  | img_expr {$1}
   | LBRACE stmt_list RBRACE { Block(List.rev $2) }
   | ID CONV ID SEMI { Imop($1, Conv, $3) }
   | ID READ SLITERAL SEMI { Imread($1, $3) }
@@ -100,9 +101,18 @@ stmt:
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
   | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7) }
   | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt
-     { For($3, $5, $7, $9) }
+      { For($3, $5, $7, $9) }
   | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
   | expr QUES expr COLON expr SEMI { Ques($1, $3, $5) }
+
+img_expr:
+    ID IN LPAREN ID RPAREN SEMI { In($1, [$4], []) }
+  | ID IN LPAREN ID COMMA ID COMMA ID RPAREN SEMI { In($1, [$4; $6; $8], []) }
+  | ID IN LPAREN ID RPAREN FOR LBRACE ID COLON expr RBRACE SEMI { In($1, [$4], [Assign($8, $10)]) }
+  | ID IN LPAREN ID COMMA ID COMMA ID RPAREN FOR LBRACE ID COLON expr RBRACE SEMI 
+      { In($1, [$4; $6; $8], [Assign($12, $14)]) }
+  | ID IN LPAREN ID COMMA ID COMMA ID RPAREN FOR LBRACE ID COLON expr COMMA ID COLON expr COMMA ID COLON expr RBRACE SEMI 
+      { In($1, [$4; $6; $8], [Assign($12, $14); Assign($16, $18); Assign($20, $22)]) }
 
 expr_opt:
     /* nothing */ { Noexpr }

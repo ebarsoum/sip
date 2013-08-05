@@ -101,7 +101,7 @@ let rec string_of_stmt = function
       string_of_expr e3  ^ ") " ^ string_of_stmt s
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
   | In (v, a, el) -> "in (" ^ v ^ ", " ^ String.concat ", " a ^ ")\n{\n" ^ 
-      String.concat ";\n" (List.map string_of_expr el) ^ "}\n"
+      String.concat ";\n" (List.map string_of_expr el) ^ ";}\n"
   | Ques (e1, e2, e3) -> "(" ^ string_of_expr e1 ^ ") ? " ^
       string_of_expr e2 ^ ":" ^ string_of_expr e3 ^ ";\n"
 
