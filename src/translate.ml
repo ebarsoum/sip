@@ -41,43 +41,59 @@ let translate_to_cc (globals, functions) =
 		  StringMap.empty (local_var @ formal_var) } in
 
     let rec expr = function
-	Literal i -> [Lit i]
-      | Id s ->
-	  (try [Lfp (StringMap.find s env.local_index)]
-          with Not_found -> try [Lod (StringMap.find s env.global_index)]
-          with Not_found -> raise (Failure ("undeclared variable " ^ s)))
-      | Binop (e1, op, e2) -> expr e1 @ expr e2 @ [Bin op]
-      | Assign (s, e) -> expr e @
-	  (try [Sfp (StringMap.find s env.local_index)]
-  	  with Not_found -> try [Str (StringMap.find s env.global_index)]
-	  with Not_found -> raise (Failure ("undeclared variable " ^ s)))
-      | Call (fname, actuals) -> (try
-	  (List.concat (List.map expr (List.rev actuals))) @
-	  [Jsr (StringMap.find fname env.function_index) ]   
-        with Not_found -> raise (Failure ("undefined function " ^ fname)))
-      | Noexpr -> []
+      BoolLiteral(l) -> string_of_bool l
+      | IntLiteral(l) -> string_of_int l
+      | FloatLiteral(l) -> string_of_float l
+      | Id(s) -> 
+		  if (StringMap.mem s env.local_var) || (StringMap.mem s env.global_var)
+            then s
+			else raise (Failure ("undeclared variable " ^ s)))
+      | Binop (e1, op, e2) -> 
+		  expr e1 ^ " " ^
+          (match op with
+	    Add -> "+" | Sub -> "-" | Mult -> "*" | Div -> "/" | Mod -> "%"
+          | Neq -> "!=" | Lt -> "<" | Leq -> "<=" | Gt -> ">" | Geq -> ">=" | Eq -> "=="
+          | And -> "&&" | Or -> "||" | Not -> "!"
+          | BitAnd -> "&" | BitOr -> "|" | BitNot -> "~") ^ " " ^
+          expr e2
+      | Assign (s, e) -> 
+		  if (StringMap.mem s env.local_var) || (StringMap.mem s env.global_var)
+		    then s ^ " = " ^ expr e
+		 	else raise (Failure ("undeclared variable " ^ s)))
+      | Call (fname, actuals) -> 
+		  if (StringMap.mem fname env.function_decl)
+		    then fname ^ "(" ^ String.concat ", " (List.map expr (List.rev actuals)) ^ ")"
+		 	else raise (Failure ("undefined function " ^ fname)))
+      | Noexpr -> ""
 
     in let rec stmt = function
-	Block sl     ->  List.concat (List.map stmt sl)
-      | Expr e       -> expr e @ [Drp]
-      | Return e     -> expr e @ [Rts num_formals]
-      | If (p, t, f) -> let t' = stmt t and f' = stmt f in
-	expr p @ [Beq(2 + List.length t')] @
-	t' @ [Bra(1 + List.length f')] @ f'
-      | For (e1, e2, e3, b) ->
-	  stmt (Block([Expr(e1); While(e2, Block([b; Expr(e3)]))]))
-      | While (e, b) ->
-	  let b' = stmt b and e' = expr e in
-	  [Bra (1+ List.length b')] @ b' @ e' @
-	  [Bne (-(List.length b' + List.length e'))]
+	    Block(sl) -> 
+          "{\n" ^ String.concat "" (List.map stmt sl) ^ "}\n"
+	  | Expr(e) -> expr e ^ ";\n";
+	  | Imop(s, o, k) -> "conv(" ^ s ^ "' " ^ k ^ ");\n";
+	  | Imread(i, p) -> i ^ " = imread(" ^ p ^ ");\n";
+	  | Imwrite(i, p) -> i ^ " = imwrite(" ^ p ^ ");\n";  
+	  | Return(e) -> "return " ^ expr e ^ ";\n";
+	  | If(e, s, Block([])) -> "if (" ^ expr e ^ ")\n" ^ stmt s
+      | If(e, s1, s2) ->  "if (" ^ expr e ^ ")\n" ^
+	      stmt s1 ^ "else\n" ^ stmt s2
+	  | For(e1, e2, e3, s) ->
+	      "for (" ^ expr e1  ^ " ; " ^ expr e2 ^ " ; " ^
+	      expr e3  ^ ") " ^ stmt s
+	  | While(e, s) -> "while (" ^ expr e ^ ") " ^ stmt s
+	  | In (v, a, el) -> "in (" ^ v ^ ", " ^ String.concat ", " a ^ ")\n{\n" ^ 
+	      String.concat ";\n" (List.map expr el) ^ ";}\n"
+	  | Ques (e1, e2, e3) -> "(" ^ expr e1 ^ ") ? " ^
+	      expr e2 ^ ":" ^ expr e3 ^ ";\n"
 
     in [Ent num_locals] @      (* Entry: allocate space for locals *)
     stmt (Block fdecl.body) @  (* Body *)
     [Lit 0; Rts num_formals]   (* Default = return 0 *)
 
-  in let env = { function_index = function_indexes;
-		 global_index = global_indexes;
-		 local_index = StringMap.empty } in
+  in let env = { 
+         function_decl = function_indexes;
+		 global_var = global_indexes;
+		 local_var = StringMap.empty } in
 
   (* Code executed to start the program: Jsr main; halt *)
   let entry_function = try
