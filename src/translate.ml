@@ -14,6 +14,10 @@ let rec enum_vdecl = function
     [] -> []
   | hd::tl -> (hd.vtype, hd.vname) :: enum_vdecl tl
 
+let rec enum_func = function
+    [] -> []
+ |  hd:: tl -> (hd.ftype, hd.fname) :: enum_func tl  
+  
 (* val string_map_pairs StringMap 'a -> (int * 'a) list -> StringMap 'a *)
 let string_map_pairs map pairs =
   List.fold_left (fun m (i, n) -> StringMap.add n i m) map pairs
@@ -31,10 +35,10 @@ let translate_to_cc (globals, functions) =
     (* Bookkeeping: FP offsets for locals and arguments *)
     let num_formals = List.length fdecl.formals
     and num_locals = List.length fdecl.locals
-    and local_offsets = enum 1 1 fdecl.locals
-    and formal_offsets = enum (-1) (-2) fdecl.formals in
-    let env = { env with local_index = string_map_pairs
-		  StringMap.empty (local_offsets @ formal_offsets) } in
+    and local_var = enum_var fdecl.locals
+    and formal_var = enum_var fdecl.formals in
+    let env = { env with local_var = string_map_pairs
+		  StringMap.empty (local_var @ formal_var) } in
 
     let rec expr = function
 	Literal i -> [Lit i]
