@@ -69,7 +69,7 @@ let translate_to_cc (globals, functions) =
 
     in let rec stmt = function
 	    Block(sl) -> 
-          "{\n" ^ String.concat "" (List.map stmt sl) ^ "}\n"
+          String.concat "" (List.map stmt sl) ^ "\n"
 	  | Expr(e) -> expr e ^ ";\n";
 	  | Imop(s, o, k) -> "conv(" ^ s ^ "' " ^ k ^ ");\n";
 	  | Imread(i, p) -> i ^ " = imread(" ^ p ^ ");\n";
@@ -125,4 +125,4 @@ let translate_to_cc (globals, functions) =
     
   (* Compile the functions *)
   in String.concat "" (List.map Ast.string_of_vdecl (List.rev globals)) ^ "\n" ^
-	(String.concat "\n" (List.map (translate env) (List.rev functions))) ^ "\n}"
+	(String.concat "\n" (List.map (translate env) (List.rev functions))) ^ "\n"
