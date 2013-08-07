@@ -20,7 +20,8 @@ let main () =
     match action with
       Ast -> let listing = Ast.string_of_program program in
                fwrite (out_filename ^ ".ast") listing
-    | Compile -> fwrite (out_filename ^ ".cc") "test"
+    | Compile -> let listing = Translate.translate_to_cc program in
+               fwrite (out_filename ^ ".cc") listing
     | None -> print_string "None\n"
 
 let _ = main ()
