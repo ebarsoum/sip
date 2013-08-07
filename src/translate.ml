@@ -9,6 +9,17 @@ type env = {
     local_var     : var_type StringMap.t; (* FP offset for args, locals *)
   }
 
+let cc_headers = "#include <stdio.h>\n"         ^
+                 "#include <stdlib.h>\n"        ^
+			     "#ifdef __APPLE__\n"           ^
+                 "#include <OpenCL/opencl.h>\n" ^
+			     "#else\n"                      ^
+                 "#include <CL/cl.h>\n"         ^
+                 "#endif\n"                     ^
+			     "#include \"EasyBMP.h\"\n\n"   ^
+			     "#define MEM_SIZE (128)\n"     ^
+                 "#define MAX_SOURCE_SIZE (0x100000)\n\n"
+
 (* val enum : int -> 'a list -> (int * 'a) list *)
 let rec enum_vdecl = function
     [] -> []
@@ -100,9 +111,8 @@ let translate_to_cc (globals, functions) =
 	  | Float -> "float"
 	  | Histogram -> "Histogram"
 	  | Image -> "Image"
-  in let name = fdecl.fname 
-  in (if ((String.compare name "main") == 0) 
-      then "int main(char* args)\n"
+  in (if ((String.compare fdecl.fname "main") == 0) 
+      then "int main()\n"
       else (functype fdecl.ftype) ^ " " ^ fdecl.fname
       ^ if ((List.length fdecl.formals) != 0)
         then ("("
@@ -111,7 +121,7 @@ let translate_to_cc (globals, functions) =
         else "()\n"
         )
       ^ "{\n" ^String.concat "" (List.map Ast.string_of_vdecl (List.rev fdecl.locals)) ^ "\n"
-      ^ stmt (Block fdecl.body) ^ "}\n" 
+      ^ stmt (Block fdecl.body) ^ "\n" ^ "    return 0;\n}\n" 
 
   in let env = { 
          function_decl = function_decls;
@@ -124,5 +134,6 @@ let translate_to_cc (globals, functions) =
   with Not_found -> raise (Failure ("no \"main\" function"))
     
   (* Compile the functions *)
-  in String.concat "" (List.map Ast.string_of_vdecl (List.rev globals)) ^ "\n" ^
+  in cc_headers ^
+    String.concat "" (List.map Ast.string_of_vdecl (List.rev globals)) ^ "\n" ^
 	(String.concat "\n" (List.map (translate env) (List.rev functions))) ^ "\n"
