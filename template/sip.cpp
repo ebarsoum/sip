@@ -2,6 +2,12 @@
 
 using namespace Sip;
 
+ClProgram::ClProgram()
+{}
+
+ClProgram::~ClProgram()
+{}
+
 void Image::read(const char* path)
 {
 	_image.ReadFromFile(path);

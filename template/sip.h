@@ -17,7 +17,13 @@
 
 namespace Sip
 {
-  
+    class ClProgram
+    {
+    public:
+        ClProgram();
+        ~ClProgram();
+	};
+
     class Image
     {
 	public:
