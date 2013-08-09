@@ -22,24 +22,38 @@ namespace Sip
     public:
         ClProgram();
         ~ClProgram();
-	};
+
+        void CompileClFile(const char* path);
+        void RunKernel(Image& in_image, Image& out_image, const char* kernelName);
+
+    private:
+        void Init();
+        void Uninit();
+
+    private:
+        cl_command_queue _commandQueue;
+        cl_device_id     _deviceId;
+        cl_context       _context;
+        cl_program       _program;
+        cl_platform_id   _platformId;
+    };
 
     class Image
     {
-	public:
-		int width();
-		int height();
-		
+    public:
+        int width();
+        int height();
+        
         RGBApixel* operator()(int i,int j);
-		
+        
         void read(const char* path);
         void write(const char* path);
 
-	private:
-		BMP _image;
-	};
+    private:
+        BMP _image;
+    };
 
-	class Histogram
+    class Histogram
     {};
 
 }
