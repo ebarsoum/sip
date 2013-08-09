@@ -2,11 +2,11 @@
 
 using namespace Sip;
 
-ClProgram::ClProgram() :  _deviceId(NULL),
+ClProgram::ClProgram() :  _commandQueue(NULL),
+                          _deviceId(NULL),
                           _context(NULL),
                           _program(NULL),
-                          _platformId(NULL),
-                          _commandQueue(NULL)
+                          _platformId(NULL)
 {
     Init();
 }
@@ -75,17 +75,17 @@ void ClProgram::Uninit()
     }
 }
 
-void ClProgram::CompileClFile(const char* path)
+void ClProgram::CompileClFile(const char* filename)
 {
     cl_int ret = 0;
     FILE *file   = NULL;
     char *source = NULL;
     size_t size  = 0;
 
-    file = fopen(fileName, "r");
+    file = fopen(filename, "r");
     if (!file) 
     {
-        cout << "Couldn't open: " << path << endl;
+        cout << "Couldn't open: " << filename << endl;
         return;
     }
 
@@ -122,7 +122,7 @@ void ClProgram::RunKernel(Image& in_image, Image& out_image, const char* kernelN
 	cl_image_format img_fmt;
  
 	img_fmt.image_channel_order = CL_RGBA;
-	img_fmt.image_channel_data_type = CL_FLOAT;
+	img_fmt.image_channel_data_type = CL_UNORM_INT8;
  
 	cl_mem imageSrc; 
     cl_mem imageDst;
@@ -130,25 +130,28 @@ void ClProgram::RunKernel(Image& in_image, Image& out_image, const char* kernelN
 	size_t width = in_image.width();
     size_t height = in_image.height();
 
-	float* input  = new float[width * height * 3];
-	float* output = new float[width * height * 3];
+	char* input  = new char[width * height * 4];
+	char* output = new char[width * height * 4];
 
-    for (int row = 0; row < height; ++row)
+    for (size_t row = 0; row < height; ++row)
     {
-        for (int col = 0; col < width; ++col)
+        for (size_t col = 0; col < width; ++col)
         {
-            input[];
+            input[row * 4 * width + 4 * col    ] = (char)in_image(row, col)->Red;
+            input[row * 4 * width + 4 * col + 1] = (char)in_image(row, col)->Green;
+            input[row * 4 * width + 4 * col + 2] = (char)in_image(row, col)->Blue;
+            input[row * 4 * width + 4 * col + 3] = (char)in_image(row, col)->Alpha;
         }
     }
 
-    imageSrc = clCreateImage2D(context, CL_MEM_READ_ONLY, &img_fmt, width, height, 0, 0, &ret);
+    imageSrc = clCreateImage2D(_context, CL_MEM_READ_ONLY, &img_fmt, width, height, 0, 0, &ret);
     if (ret != CL_SUCCESS) 
     {
         cout << "Error: imageSrc clCreateImage2D: " << ret << endl;
         return;
     }
  
-	imageDst = clCreateImage2D(context, CL_MEM_READ_WRITE, &img_fmt, width, height, 0, 0, &ret);
+	imageDst = clCreateImage2D(_context, CL_MEM_READ_WRITE, &img_fmt, width, height, 0, 0, &ret);
     if (ret != CL_SUCCESS) 
     {
         cout << "Error: imageDst clCreateImage2D: " << ret << endl;
@@ -166,7 +169,7 @@ void ClProgram::RunKernel(Image& in_image, Image& out_image, const char* kernelN
         return;
     }
 
-	cl_kernel kernel = clCreateKernel(program, kernelName, &ret);
+	cl_kernel kernel = clCreateKernel(_program, kernelName, &ret);
     if (ret != CL_SUCCESS) 
     {
         cout << "Error: clCreateKernel: " << ret << endl;
@@ -201,6 +204,17 @@ void ClProgram::RunKernel(Image& in_image, Image& out_image, const char* kernelN
         cout << "Error: clEnqueueReadImage: " << ret << endl;
         return;
     } 
+
+    for (size_t row = 0; row < height; ++row)
+    {
+        for (size_t col = 0; col < width; ++col)
+        {
+            out_image(row, col)->Red   = output[row * 4 * width + 4 * col    ];
+            out_image(row, col)->Green = output[row * 4 * width + 4 * col + 1];
+            out_image(row, col)->Blue  = output[row * 4 * width + 4 * col + 2];
+            out_image(row, col)->Alpha = output[row * 4 * width + 4 * col + 3];
+        }
+    }
 
     delete[] input;
     delete[] output;

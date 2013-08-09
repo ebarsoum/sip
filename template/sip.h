@@ -1,3 +1,4 @@
+#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -9,6 +10,8 @@
 
 #include "EasyBMP.h"
 
+using namespace std;
+
 #ifndef SIP_H
 #define SIP_H
 
@@ -17,13 +20,15 @@
 
 namespace Sip
 {
+	class Image;
+
     class ClProgram
     {
     public:
         ClProgram();
         ~ClProgram();
 
-        void CompileClFile(const char* path);
+        void CompileClFile(const char* filename);
         void RunKernel(Image& in_image, Image& out_image, const char* kernelName);
 
     private:
