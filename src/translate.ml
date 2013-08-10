@@ -1,33 +1,49 @@
+(*
+    translate.ml for SIP language
+
+    Name: Emad Barsoum
+    UNI: eb2871
+*)
+
 open Ast
 
 module StringMap = Map.Make(String)
 
 (* Symbol table: Information about all the names in scope *)
 type env = {
-    function_decl : func_type StringMap.t; (* Index for each function *)
+    function_decl : string StringMap.t; (* Index for each function *)
     global_var    : var_type StringMap.t; (* "Address" for global variables *)
     local_var     : var_type StringMap.t; (* FP offset for args, locals *)
   }
 
-let cc_headers = "#include <stdio.h>\n"         ^
-                 "#include <stdlib.h>\n"        ^
-			     "#ifdef __APPLE__\n"           ^
-                 "#include <OpenCL/opencl.h>\n" ^
-			     "#else\n"                      ^
-                 "#include <CL/cl.h>\n"         ^
-                 "#endif\n"                     ^
-			     "#include \"EasyBMP.h\"\n\n"   ^
-			     "#define MEM_SIZE (128)\n"     ^
-                 "#define MAX_SOURCE_SIZE (0x100000)\n\n"
+let cc_headers = "#include \"sip.h\"\n"         ^
+                 "using namespace Sip;\n\n"     ^
+			     "ClProgram g_clProgram;\n\n"
+
+(* Return a string represntation of function signature *)
+let fsig fdecl =
+  fdecl.fname ^ "_" ^ String.concat "_" (List.map Ast.string_of_vdecl fdecl.fparams)
+
+let vdecl_of_vinit = function
+    Iminit(v, e) -> (v.vtype, v.vname)
+  | Vinit(v, e) -> (v.vtype, v.vname)
+
+let vdecl_of_vdef = function
+    VarDecl(v) -> (v.vtype, v.vname)
+  | Varinit(vi) -> vdecl_of_vinit vi
 
 (* val enum : int -> 'a list -> (int * 'a) list *)
 let rec enum_vdecl = function
     [] -> []
   | hd::tl -> (hd.vtype, hd.vname) :: enum_vdecl tl
 
+let rec enum_vdef = function
+    [] -> []
+  | hd::tl -> (vdecl_of_vdef hd) :: enum_vdef tl
+
 let rec enum_func = function
     [] -> []
- |  hd:: tl -> (hd.ftype, hd.fname) :: enum_func tl  
+ |  hd:: tl -> (fsig hd, hd.fname) :: enum_func tl  
   
 (* val string_map_pairs StringMap 'a -> (int * 'a) list -> StringMap 'a *)
 let string_map_pairs map pairs =
@@ -39,16 +55,14 @@ let string_map_pairs map pairs =
 let translate_to_cc (globals, functions) =
 
   (* Allocate "addresses" for each global variable *)
-  let global_variables = string_map_pairs StringMap.empty (enum_vdecl globals) in
+  let global_variables = string_map_pairs StringMap.empty (enum_vdef globals) in
   let function_decls = string_map_pairs StringMap.empty (enum_func functions) in
 
   (* Translate a function in AST form into a list of bytecode statements *)
   let translate env fdecl =
     (* Bookkeeping: FP offsets for locals and arguments *)
-    let num_formals = List.length fdecl.formals
-    and num_locals = List.length fdecl.locals
-    and local_var = enum_vdecl fdecl.locals
-    and formal_var = enum_vdecl fdecl.formals in
+    let local_var = enum_vdef fdecl.flocals
+    and formal_var = enum_vdecl fdecl.fparams in
     let env = { env with local_var = string_map_pairs
 		  StringMap.empty (local_var @ formal_var) } in
 
@@ -60,6 +74,9 @@ let translate_to_cc (globals, functions) =
 		  if ((StringMap.mem s env.local_var) || (StringMap.mem s env.global_var))
             then s
 			else raise (Failure ("undeclared variable " ^ s))
+      | Unop(o, e) ->
+          (match o with
+        Neg -> "-") ^ expr e
       | Binop (e1, op, e2) -> 
 		  expr e1 ^ " " ^
           (match op with
@@ -76,13 +93,22 @@ let translate_to_cc (globals, functions) =
 		  if (StringMap.mem fname env.function_decl)
 		    then fname ^ "(" ^ String.concat ", " (List.map expr (List.rev actuals)) ^ ")"
 		 	else raise (Failure ("undefined function " ^ fname))
+  	  | Ques (e1, e2, e3) -> "(" ^ expr e1 ^ ") ? " ^
+  	      expr e2 ^ ":" ^ expr e3
+      | Bracket (e) -> "(" ^ expr e ^ ")"
       | Noexpr -> ""
+
+    in let rec img_expr = function
+	      Imop(s, o, k) -> "conv(" ^ s ^ "' " ^ k ^ ");\n";
+	    | In (v, a, el) -> "in (" ^ v ^ ", " ^ String.concat ", " a ^ ")\n{\n" ^ 
+	        String.concat ";\n" (List.map expr el) ^ ";}\n"
+        | Imassign(v, e) -> v ^ " = " ^ img_expr e ^ ";\n"
 
     in let rec stmt = function
 	    Block(sl) -> 
           String.concat "" (List.map stmt sl) ^ "\n"
 	  | Expr(e) -> expr e ^ ";\n";
-	  | Imop(s, o, k) -> "conv(" ^ s ^ "' " ^ k ^ ");\n";
+	  | Imexpr(imexpr) -> img_expr imexpr
 	  | Imread(i, p) -> i ^ " = imread(" ^ p ^ ");\n";
 	  | Imwrite(i, p) -> i ^ " = imwrite(" ^ p ^ ");\n";  
 	  | Return(e) -> "return " ^ expr e ^ ";\n";
@@ -93,35 +119,28 @@ let translate_to_cc (globals, functions) =
 	      "for (" ^ expr e1  ^ " ; " ^ expr e2 ^ " ; " ^
 	      expr e3  ^ ") " ^ stmt s
 	  | While(e, s) -> "while (" ^ expr e ^ ") " ^ stmt s
-	  | In (v, a, el) -> "in (" ^ v ^ ", " ^ String.concat ", " a ^ ")\n{\n" ^ 
-	      String.concat ";\n" (List.map expr el) ^ ";}\n"
-	  | Ques (e1, e2, e3) -> "(" ^ expr e1 ^ ") ? " ^
-	      expr e2 ^ ":" ^ expr e3 ^ ";\n"
-  in let functype = function
-		FVoid -> "void"
-	  | FBool -> "bool"
-	  | FInt -> "int"
-	  | FUInt -> "unsigned int"
-	  | FFloat -> "float"
+      | Break -> "break;\n"
 
-  in let vartype = function
-		Bool -> "bool"
+    in let vartype = function
+        Void -> "void"
+	  | Bool -> "bool"
 	  | Int -> "int"
 	  | UInt -> "unsigned int"
 	  | Float -> "float"
 	  | Histogram -> "Histogram"
 	  | Image -> "Image"
+	  
   in (if ((String.compare fdecl.fname "main") == 0) 
       then "int main()\n"
-      else (functype fdecl.ftype) ^ " " ^ fdecl.fname
-      ^ if ((List.length fdecl.formals) != 0)
+      else (vartype fdecl.freturn) ^ " " ^ fdecl.fname
+      ^ if ((List.length fdecl.fparams) != 0)
         then ("("
-      ^ vartype (List.hd fdecl.formals).vtype ^ " " ^ (List.hd fdecl.formals).vname ^ " "
-      ^ String.concat "" (List.map (fun formal -> ", " ^ vartype formal.vtype ^ " " ^ formal.vname) (List.tl fdecl.formals)) ^ ")\n")
+      ^ vartype (List.hd fdecl.fparams).vtype ^ " " ^ (List.hd fdecl.fparams).vname ^ " "
+      ^ String.concat "" (List.map (fun formal -> ", " ^ vartype formal.vtype ^ " " ^ formal.vname) (List.tl fdecl.fparams)) ^ ")\n")
         else "()\n"
         )
-      ^ "{\n" ^String.concat "" (List.map Ast.string_of_vdecl (List.rev fdecl.locals)) ^ "\n"
-      ^ stmt (Block fdecl.body) ^ "\n" ^ "    return 0;\n}\n" 
+      ^ "{\n" ^String.concat "" (List.map Ast.string_of_vdef (List.rev fdecl.flocals)) ^ "\n"
+      ^ stmt (Block fdecl.fbody) ^ "\n" ^ "    return 0;\n}\n"
 
   in let env = { 
          function_decl = function_decls;
@@ -135,5 +154,5 @@ let translate_to_cc (globals, functions) =
     
   (* Compile the functions *)
   in cc_headers ^
-    String.concat "" (List.map Ast.string_of_vdecl (List.rev globals)) ^ "\n" ^
+    String.concat "" (List.map Ast.string_of_vdef (List.rev globals)) ^ "\n" ^
 	(String.concat "\n" (List.map (translate env) (List.rev functions))) ^ "\n"

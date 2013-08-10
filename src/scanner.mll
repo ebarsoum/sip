@@ -1,5 +1,8 @@
 (* 
     Scanner.mll for SIP language
+
+    Name: Emad Barsoum
+    UNI: eb2871
 *)
 
 { 
@@ -9,12 +12,12 @@
 
 let newline    = '\n' | "\r\n"
 let whitespace = [' ' '\t']
-let digit   = ['0'-'9']
-let exp     = 'e' ['-' '+']? digit+
-let int_t   = digit+
-let float_t = digit+ '.' digit* exp? | digit+ exp | '.' digit+ exp?
-let string_r = '\\'+ | [^ '"']
-let string_t = '"' string_r* '"'
+let digit      = ['0'-'9']
+let exp        = 'e' ['-' '+']? digit+
+let int_t      = digit+
+let float_t    = digit+ '.' digit* exp? | digit+ exp | '.' digit+ exp?
+let string_r   = '\\'+ | [^ '"']
+let string_t   = '"' string_r* '"'
 
 rule token = parse  
   newline				{ Lexing.new_line lexbuf; token lexbuf }
