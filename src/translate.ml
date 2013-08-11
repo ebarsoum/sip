@@ -6,19 +6,21 @@
 *)
 
 open Ast
-
+open Printf
+  
 module StringMap = Map.Make(String)
 
 (* Symbol table: Information about all the names in scope *)
 type env = {
-    function_decl : string StringMap.t; (* Index for each function *)
+    function_decl : string StringMap.t;   (* Signature for each function *)
     global_var    : var_type StringMap.t; (* "Address" for global variables *)
     local_var     : var_type StringMap.t; (* FP offset for args, locals *)
   }
 
 let cc_headers = "#include \"sip.h\"\n"         ^
                  "using namespace Sip;\n\n"     ^
-			     "ClProgram g_clProgram;\n\n"
+			     "ClProgram g_clProgram;\n"     ^
+				 "Image g__sip_temp__;\n\n"
 
 (* Return a string represntation of function signature *)
 let fsig fdecl =
@@ -63,15 +65,16 @@ let translate_to_cc (globals, functions) =
     (* Bookkeeping: FP offsets for locals and arguments *)
     let local_var = enum_vdef fdecl.flocals
     and formal_var = enum_vdecl fdecl.fparams in
-    let env = { env with local_var = string_map_pairs
-		  StringMap.empty (local_var @ formal_var) } in
+    let env = { env with local_var = string_map_pairs StringMap.empty (local_var @ formal_var) } in
+    let dynamic_var = ref StringMap.empty in
 
-    let rec expr = function
+    let rec expr e = 
+	  (match e with
       BoolLiteral(l) -> string_of_bool l
       | IntLiteral(l) -> string_of_int l
       | FloatLiteral(l) -> string_of_float l
       | Id(s) -> 
-		  if ((StringMap.mem s env.local_var) || (StringMap.mem s env.global_var))
+		  if ((StringMap.mem s env.local_var) || (StringMap.mem s env.global_var) || (StringMap.mem s !dynamic_var))
             then s
 			else raise (Failure ("undeclared variable " ^ s))
       | Unop(o, e) ->
@@ -85,8 +88,8 @@ let translate_to_cc (globals, functions) =
           | And -> "&&" | Or -> "||" | Not -> "!"
           | BitAnd -> "&" | BitOr -> "|" | BitNot -> "~") ^ " " ^
           expr e2
-      | Assign (s, e) -> 
-		  if ((StringMap.mem s env.local_var) || (StringMap.mem s env.global_var))
+      | Assign (s, e) ->
+		  if ((StringMap.mem s env.local_var) || (StringMap.mem s env.global_var) || (StringMap.mem s !dynamic_var))
 		    then s ^ " = " ^ expr e
 		 	else raise (Failure ("undeclared variable " ^ s))
       | Call (fname, actuals) -> 
@@ -96,21 +99,48 @@ let translate_to_cc (globals, functions) =
   	  | Ques (e1, e2, e3) -> "(" ^ expr e1 ^ ") ? " ^
   	      expr e2 ^ ":" ^ expr e3
       | Bracket (e) -> "(" ^ expr e ^ ")"
-      | Noexpr -> ""
+      | Noexpr -> "")
+
+   in let add_channels_var c =
+      if ((List.length c) != 0)
+      then
+        (String.concat "" (List.map (fun f ->
+		  (* print_string ((Ast.get_channel f) ^ "\n"); *)
+		  ignore(dynamic_var := StringMap.add (Ast.get_channel f) Ast.UInt !dynamic_var);
+		  ignore(dynamic_var := StringMap.add ((Ast.get_channel f) ^ "_out") Ast.UInt !dynamic_var);
+		  "") c))
+ 	else raise (Failure ("empty channel list in an \"In\" statement "))
+
+   in let expand_channels c =
+	    if ((List.length c) != 0)
+	    then
+	      (String.concat "" (List.map (fun f ->
+			  "        unsigned int " ^ Ast.get_channel f ^ " = " ^ Ast.string_of_channel f ^ ";\n" ^
+		      "        unsigned int " ^ Ast.get_channel f ^ "_out = " ^ Ast.string_of_channel f ^ ";\n") c))
+	 	else raise (Failure ("empty channel list in an \"In\" statement "))
 
     in let rec img_expr = function
-	      Imop(s, o, k) -> "conv(" ^ s ^ "' " ^ k ^ ");\n";
-	    | In (v, a, el) -> "in (" ^ v ^ ", " ^ String.concat ", " a ^ ")\n{\n" ^ 
-	        String.concat ";\n" (List.map expr el) ^ ";}\n"
-        | Imassign(v, e) -> v ^ " = " ^ img_expr e ^ ";\n"
+	      Imop(s, o, k) -> "g_clProgram.RunKernel(" ^ s ^ ", g__sip_temp__, \"" ^ k ^ "\");\n";
+	    | In (v, a, el) -> ignore(add_channels_var a); (* To force the order, we need to add the variable before evluating the expr. *)
+            "g__sip_temp__.clone(" ^ v ^ ");\n" ^
+            "for (size_t row = 0; row <" ^ v ^ ".height(); ++row)\n{\n"        ^
+            "    for (size_t col = 0; col <" ^ v ^ ".width(); ++col)\n    {\n" ^
+            expand_channels a ^ "\n" ^
+	        String.concat ";\n" (List.map expr el) ^ ";\n\n"  ^
+	        "        g__sip_temp__(row, col)->Red   = (char)red_out;\n"   ^
+	        "        g__sip_temp__(row, col)->Green = (char)green_out;\n" ^
+	        "        g__sip_temp__(row, col)->Blue  = (char)blue_out;\n"  ^
+			"        g__sip_temp__(row, col)->Alpha = " ^ v ^ "(row, col)->Alpha;\n" ^
+			"    }\n}\n"
+        | Imassign(v, e) -> img_expr e ^ "\n" ^ v ^ " = g__sip_temp__;\n"
 
     in let rec stmt = function
 	    Block(sl) -> 
           String.concat "" (List.map stmt sl) ^ "\n"
 	  | Expr(e) -> expr e ^ ";\n";
 	  | Imexpr(imexpr) -> img_expr imexpr
-	  | Imread(i, p) -> i ^ " = imread(" ^ p ^ ");\n";
-	  | Imwrite(i, p) -> i ^ " = imwrite(" ^ p ^ ");\n";  
+	  | Imread(i, p) -> i ^ "->read(" ^ p ^ ");\n";
+	  | Imwrite(i, p) -> i ^ "->write(" ^ p ^ ");\n";  
 	  | Return(e) -> "return " ^ expr e ^ ";\n";
 	  | If(e, s, Block([])) -> "if (" ^ expr e ^ ")\n" ^ stmt s
       | If(e, s1, s2) ->  "if (" ^ expr e ^ ")\n" ^

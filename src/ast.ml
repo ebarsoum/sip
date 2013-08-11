@@ -29,9 +29,12 @@ type expr =
   | Bracket of expr
   | Noexpr
 
+type channel =
+    Channel of string * string
+
 type img_expr =
     Imop of string * image_op * string
-  | In of string * string list * expr list
+  | In of string * channel list * expr list
   | Imassign of string * img_expr
 
 type var_init =
@@ -63,6 +66,11 @@ type func_decl = {
   }
 
 type program = var_def list * func_decl list
+
+(* 
+   The below are some helper functions, some of them are used in the translate 
+   unit and other for testing 
+*)
 
 let string_of_vartype = function
     Void -> "void"
@@ -97,9 +105,22 @@ let rec string_of_expr = function
   | Bracket (e) -> "(" ^ string_of_expr e ^ ")"
   | Noexpr -> ""
 
+let get_channel = function
+    Channel(_, c) -> c
+
+let string_of_channel = function
+    Channel(i, c) -> i ^ "(row, col)->" ^ c
+
+let string_of_channels c =
+  if ((List.length c) != 0)
+  then 
+    (string_of_channel (List.hd c) ^
+     String.concat "" (List.map (fun f -> ", " ^ string_of_channel f) (List.tl c)))
+  else ""
+
 let rec string_of_img_expr = function
     Imop(s, o, k) -> "conv(" ^ s ^ "' " ^ k ^ ");\n";
-  | In (v, a, el) -> "in (" ^ v ^ ", " ^ String.concat ", " a ^ ")\n{\n" ^ 
+  | In (v, a, el) -> "in (" ^ string_of_channels a ^ ")\n{\n" ^ 
       String.concat ";\n" (List.map string_of_expr el) ^ ";}\n"
   | Imassign(v, e) -> v ^ " = " ^ string_of_img_expr e
 

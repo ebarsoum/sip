@@ -117,13 +117,13 @@ stmt:
   | BREAK { Break }
 
 img_expr:
-    ID IN LPAREN ID RPAREN SEMI { In($1, [$4], []) }
-  | ID IN LPAREN ID COMMA ID COMMA ID RPAREN SEMI { In($1, [$4; $6; $8], []) }
-  | ID IN LPAREN ID RPAREN FOR LBRACE ID COLON expr RBRACE SEMI { In($1, [$4], [Assign($8, $10)]) }
+    ID IN LPAREN ID RPAREN SEMI { In($1, [Channel($1,$4)], []) }
+  | ID IN LPAREN ID COMMA ID COMMA ID RPAREN SEMI { In($1, [Channel($1,$4); Channel($1,$6); Channel($1,$8)], []) }
+  | ID IN LPAREN ID RPAREN FOR LBRACE ID COLON expr RBRACE SEMI { In($1, [Channel($1,$4)], [Assign($8 ^ "_out", $10)]) }
   | ID IN LPAREN ID COMMA ID COMMA ID RPAREN FOR LBRACE ID COLON expr RBRACE SEMI 
-      { In($1, [$4; $6; $8], [Assign($12, $14)]) }
+      { In($1, [Channel($1,$4); Channel($1,$6); Channel($1,$8)], [Assign($12 ^ "_out", $14)]) }
   | ID IN LPAREN ID COMMA ID COMMA ID RPAREN FOR LBRACE ID COLON expr COMMA ID COLON expr COMMA ID COLON expr RBRACE SEMI 
-      { In($1, [$4; $6; $8], [Assign($12, $14); Assign($16, $18); Assign($20, $22)]) }
+      { In($1, [Channel($1,$4); Channel($1,$6); Channel($1,$8)], [Assign($12 ^ "_out", $14); Assign($16 ^ "_out", $18); Assign($20 ^ "_out", $22)]) }
   | ID CONV ID SEMI    { Imop($1, Conv, $3) }
   | ID ASSIGN img_expr { Imassign($1, $3) }
 
