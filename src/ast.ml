@@ -32,9 +32,13 @@ type expr =
 type channel =
     Channel of string * string
 
+type row3 = 
+    Row of float * float * float
+
 type img_expr =
     Imop of string * image_op * string
   | In of string * channel list * expr list
+  | Immatrix3x3 of row3 * row3 * row3
   | Imassign of string * img_expr
 
 type var_init =
@@ -62,7 +66,8 @@ type func_decl = {
     fparams : var_decl list;
     flocals : var_def list;
     fbody   : stmt list;
-	freturn : var_type
+	freturn : var_type;
+	fgpu    : bool
   }
 
 type program = var_def list * func_decl list
@@ -105,6 +110,11 @@ let rec string_of_expr = function
   | Bracket (e) -> "(" ^ string_of_expr e ^ ")"
   | Noexpr -> ""
 
+let string_of_row3 = function
+    Row(v1, v2, v3) -> "{" ^ string_of_float v1 ^ ", " 
+	                       ^ string_of_float v2 ^ ", " 
+						   ^ string_of_float v3 ^ "}"
+
 let get_channel = function
     Channel(_, c) -> c
 
@@ -122,6 +132,9 @@ let rec string_of_img_expr = function
     Imop(s, o, k) -> "conv(" ^ s ^ "' " ^ k ^ ");\n";
   | In (v, a, el) -> "in (" ^ string_of_channels a ^ ")\n{\n" ^ 
       String.concat ";\n" (List.map string_of_expr el) ^ ";}\n"
+  | Immatrix3x3(r1, r2, r3) -> "{" ^ string_of_row3 r1 ^ ", " 
+                                   ^ string_of_row3 r2 ^ ", " 
+							       ^ string_of_row3 r3 ^ "};\n"
   | Imassign(v, e) -> v ^ " = " ^ string_of_img_expr e
 
 let string_of_vdecl var = (string_of_vartype var.vtype) ^ " " ^ var.vname

@@ -69,12 +69,20 @@ vinit:
   | img_type ID ASSIGN img_expr SEMI { Iminit({ vname = $2; vtype = $1}, $4) }
 
 fdecl:
-   FUN ID LPAREN formals_opt RPAREN ftype_opt LBRACE vdef_list stmt_list RBRACE
+    FUN ID LPAREN formals_opt RPAREN ftype_opt LBRACE vdef_list stmt_list RBRACE
      { { fname    = $2;
 	     fparams  = $4;
 	     flocals  = List.rev $8;
 	     fbody    = List.rev $9;
-		 freturn  = $6 } }
+		 freturn  = $6;
+		 fgpu     = false } }
+  | KERNEL ID LPAREN formals_opt RPAREN LBRACE vdef_list stmt_list RBRACE
+     { { fname    = $2;
+  	     fparams  = $4;
+  	     flocals  = List.rev $7;
+  	     fbody    = List.rev $8;
+  		 freturn  = Void;
+		 fgpu     = true } }
 
 formals_opt:
     /* nothing */ { [] }
@@ -125,7 +133,11 @@ img_expr:
   | ID IN LPAREN ID COMMA ID COMMA ID RPAREN FOR LBRACE ID COLON expr COMMA ID COLON expr COMMA ID COLON expr RBRACE SEMI 
       { In($1, [Channel($1,$4); Channel($1,$6); Channel($1,$8)], [Assign($12 ^ "_out", $14); Assign($16 ^ "_out", $18); Assign($20 ^ "_out", $22)]) }
   | ID CONV ID SEMI    { Imop($1, Conv, $3) }
+  | LBRACKET row3 row3 row3 LBRACKET SEMI { Immatrix3x3($2, $3, $4) }
   | ID ASSIGN img_expr { Imassign($1, $3) }
+
+row3:
+    LBRACKET FLITERAL FLITERAL FLITERAL LBRACKET  { Row($2, $3, $4) }
 
 expr_opt:
     /* nothing */ { Noexpr }

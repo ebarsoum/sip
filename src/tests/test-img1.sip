@@ -11,3 +11,8 @@ fun main()
   im2 >> "./test2.bmp";
 }
 
+fun test(image test) int
+{
+  return 0;
+}
+

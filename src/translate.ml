@@ -159,19 +159,31 @@ let translate_to_cc (globals, functions) =
 	  | Float -> "float"
 	  | Histogram -> "Histogram"
 	  | Image -> "Image"
+
+    in let func_params_type = function
+        Void -> "void"
+      | Bool -> "bool"
+      | Int -> "int"
+      | UInt -> "unsigned int"
+      | Float -> "float"
+      | Histogram -> "Histogram&"
+      | Image -> "Image&"
 	  
-  in (if ((String.compare fdecl.fname "main") == 0) 
+  in (if ((String.compare fdecl.fname "main") == 0)
       then "int main()\n"
       else (vartype fdecl.freturn) ^ " " ^ fdecl.fname
       ^ if ((List.length fdecl.fparams) != 0)
         then ("("
-      ^ vartype (List.hd fdecl.fparams).vtype ^ " " ^ (List.hd fdecl.fparams).vname ^ " "
-      ^ String.concat "" (List.map (fun formal -> ", " ^ vartype formal.vtype ^ " " ^ formal.vname) (List.tl fdecl.fparams)) ^ ")\n")
+      ^ func_params_type (List.hd fdecl.fparams).vtype ^ " " ^ (List.hd fdecl.fparams).vname ^ " "
+      ^ String.concat "" (List.map (fun formal -> ", " ^ func_params_type formal.vtype ^ " " ^ formal.vname) (List.tl fdecl.fparams)) ^ ")\n")
         else "()\n"
         )
       ^ "{\n" ^String.concat "" (List.map Ast.string_of_vdef (List.rev fdecl.flocals)) ^ "\n"
-      ^ stmt (Block fdecl.fbody) ^ "\n" ^ "    return 0;\n}\n"
-
+      ^ stmt (Block fdecl.fbody) ^ "\n" ^ 
+      if ((String.compare fdecl.fname "main") == 0)
+	  then "    return 0;\n}\n"
+      else "\n}\n"
+	  
   in let env = { 
          function_decl = function_decls;
 		 global_var = global_variables;
