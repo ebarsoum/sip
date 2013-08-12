@@ -139,8 +139,8 @@ let translate_to_cc (globals, functions) =
           String.concat "" (List.map stmt sl) ^ "\n"
 	  | Expr(e) -> expr e ^ ";\n";
 	  | Imexpr(imexpr) -> img_expr imexpr
-	  | Imread(i, p) -> i ^ "->read(" ^ p ^ ");\n";
-	  | Imwrite(i, p) -> i ^ "->write(" ^ p ^ ");\n";  
+	  | Imread(i, p) -> i ^ ".read(" ^ p ^ ");\n";
+	  | Imwrite(i, p) -> i ^ ".write(" ^ p ^ ");\n";  
 	  | Return(e) -> "return " ^ expr e ^ ";\n";
 	  | If(e, s, Block([])) -> "if (" ^ expr e ^ ")\n" ^ stmt s
       | If(e, s1, s2) ->  "if (" ^ expr e ^ ")\n" ^

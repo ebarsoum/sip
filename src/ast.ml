@@ -119,7 +119,7 @@ let get_channel = function
     Channel(_, c) -> c
 
 let string_of_channel = function
-    Channel(i, c) -> i ^ "(row, col)->" ^ c
+    Channel(i, c) -> i ^ "(row, col)->" ^ String.capitalize c
 
 let string_of_channels c =
   if ((List.length c) != 0)
