@@ -13,10 +13,11 @@ module StringMap = Map.Make(String)
 (* Symbol table: Information about all the names in scope *)
 type env = {
     function_decl : string StringMap.t;   (* Signature for each function *)
-    global_var    : var_type StringMap.t; (* "Address" for global variables *)
-    local_var     : var_type StringMap.t; (* FP offset for args, locals *)
+    global_var    : var_type StringMap.t; (* global variables and their types*)
+    local_var     : var_type StringMap.t; (* locals + function params and their types *)
   }
 
+(* Begining of the C++ file. *)
 let cc_headers = "#include \"sip.h\"\n"         ^
                  "using namespace Sip;\n\n"     ^
 			     "ClProgram g_clProgram;\n"     ^
@@ -26,10 +27,14 @@ let cc_headers = "#include \"sip.h\"\n"         ^
 let fsig fdecl =
   fdecl.fname ^ "_" ^ String.concat "_" (List.map Ast.string_of_vdecl fdecl.fparams)
 
+(* Extract the declared type from the fully qualified initializer *)
 let vdecl_of_vinit = function
-    Iminit(v, e) -> (v.vtype, v.vname)
-  | Vinit(v, e) -> (v.vtype, v.vname)
+    Iminit(v, _) -> (v.vtype, v.vname)
+  | Vinit(v, _) -> (v.vtype, v.vname)
+  | Immatrix3x3(v, _, _, _) -> (v.vtype, v.vname)
 
+(* Extract the declared type from variable definition. Variable definition is a declared variable
+   or declared + initialized *)
 let vdecl_of_vdef = function
     VarDecl(v) -> (v.vtype, v.vname)
   | Varinit(vi) -> vdecl_of_vinit vi
@@ -51,10 +56,8 @@ let rec enum_func = function
 let string_map_pairs map pairs =
   List.fold_left (fun m (i, n) -> StringMap.add n i m) map pairs
   
-(** Translate a program in AST form into a bytecode program.  Throw an
-    exception if something is wrong, e.g., a reference to an unknown
-    variable or function *)
-let translate_to_cc (globals, functions) =
+(* Translate the AST tree into a C++ program *)
+let translate_to_cc (globals, functions) out_name =
 
   (* Allocate "addresses" for each global variable *)
   let global_variables = string_map_pairs StringMap.empty (enum_vdef globals) in
@@ -120,11 +123,17 @@ let translate_to_cc (globals, functions) =
 	 	else raise (Failure ("empty channel list in an \"In\" statement "))
 
     in let rec img_expr = function
-	      Imop(s, o, k) -> "g_clProgram.RunKernel(" ^ s ^ ", g__sip_temp__, \"" ^ k ^ "\");\n";
+	      Imop(s, o, k) -> 
+			  if ((StringMap.mem s env.local_var) || (StringMap.mem s env.global_var)) then begin
+			        if ((StringMap.mem k env.local_var) || (StringMap.mem k env.global_var)) then
+			           "g_clProgram.ApplyFilter(" ^ s ^ ", g__sip_temp__, (float*)&" ^ k ^ ");\n"
+					else raise (Failure ("undeclared variable " ^ k))
+				end
+			 	else raise (Failure ("undeclared variable " ^ s))
 	    | In (v, a, el) -> ignore(add_channels_var a); (* To force the order, we need to add the variable before evluating the expr. *)
             "g__sip_temp__.clone(" ^ v ^ ");\n" ^
-            "for (size_t row = 0; row <" ^ v ^ ".height(); ++row)\n{\n"        ^
-            "    for (size_t col = 0; col <" ^ v ^ ".width(); ++col)\n    {\n" ^
+            "for (int row = 0; row <" ^ v ^ ".height(); ++row)\n{\n"        ^
+            "    for (int col = 0; col <" ^ v ^ ".width(); ++col)\n    {\n" ^
             expand_channels a ^ "\n" ^
 	        String.concat ";\n" (List.map expr el) ^ ";\n\n"  ^
 	        "        g__sip_temp__(row, col)->Red   = (char)red_out;\n"   ^
@@ -157,6 +166,7 @@ let translate_to_cc (globals, functions) =
 	  | Int -> "int"
 	  | UInt -> "unsigned int"
 	  | Float -> "float"
+      | Matrix3x3 -> "float"
 	  | Histogram -> "Histogram"
 	  | Image -> "Image"
 
@@ -166,19 +176,20 @@ let translate_to_cc (globals, functions) =
       | Int -> "int"
       | UInt -> "unsigned int"
       | Float -> "float"
+      | Matrix3x3 -> "float"
       | Histogram -> "Histogram&"
       | Image -> "Image&"
 	  
   in (if ((String.compare fdecl.fname "main") == 0)
-      then "int main()\n"
+      then "int main()\n{\n" ^ "    g_clProgram.CompileClFile(\"./" ^ out_name ^ ".cl\");\n\n"
       else (vartype fdecl.freturn) ^ " " ^ fdecl.fname
       ^ if ((List.length fdecl.fparams) != 0)
         then ("("
       ^ func_params_type (List.hd fdecl.fparams).vtype ^ " " ^ (List.hd fdecl.fparams).vname ^ " "
-      ^ String.concat "" (List.map (fun formal -> ", " ^ func_params_type formal.vtype ^ " " ^ formal.vname) (List.tl fdecl.fparams)) ^ ")\n")
-        else "()\n"
+      ^ String.concat "" (List.map (fun formal -> ", " ^ func_params_type formal.vtype ^ " " ^ formal.vname) (List.tl fdecl.fparams)) ^ ")\n{\n")
+        else "()\n{\n"
         )
-      ^ "{\n" ^String.concat "" (List.map Ast.string_of_vdef (List.rev fdecl.flocals)) ^ "\n"
+      ^ String.concat "" (List.map Ast.string_of_vdef (List.rev fdecl.flocals)) ^ "\n"
       ^ stmt (Block fdecl.fbody) ^ "\n" ^ 
       if ((String.compare fdecl.fname "main") == 0)
 	  then "    return 0;\n}\n"
@@ -190,7 +201,7 @@ let translate_to_cc (globals, functions) =
 		 local_var = StringMap.empty } in
 
   (* Code executed to start the program: Jsr main; halt *)
-  let entry_function = try
+  let _ = try
     (StringMap.find "main" function_decls)
   with Not_found -> raise (Failure ("no \"main\" function"))
     
@@ -198,3 +209,26 @@ let translate_to_cc (globals, functions) =
   in cc_headers ^
     String.concat "" (List.map Ast.string_of_vdef (List.rev globals)) ^ "\n" ^
 	(String.concat "\n" (List.map (translate env) (List.rev functions))) ^ "\n"
+
+(* Translate the AST tree into a OpenCL shader program *)
+let translate_to_cl (globals, functions) out_name =
+	"__constant sampler_t sampler =  CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
+
+    __kernel void apply_filter(__read_only image2d_t in_image, __write_only image2d_t out_image, __constant float* filter)
+    {
+        const int2 pos = {get_global_id(0), get_global_id(1)};
+
+        float4 sum = (float4)(0.0f);
+        for (int y = -1; y <= 1; y++)
+	    {
+            for (int x = -1; x <= 1; x++)
+		    {
+                sum.x += filter[(y + 1) * 3 + (x + 1)] * read_imagef(in_image, sampler, pos + (int2)(x,y)).x;
+                sum.y += filter[(y + 1) * 3 + (x + 1)] * read_imagef(in_image, sampler, pos + (int2)(x,y)).y;
+                sum.z += filter[(y + 1) * 3 + (x + 1)] * read_imagef(in_image, sampler, pos + (int2)(x,y)).z;
+            }
+       }
+	
+       write_imagef (out_image, (int2)(pos.x, pos.y), sum);
+    }\n"
+

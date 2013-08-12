@@ -13,7 +13,7 @@ type unary_op = Neg
 
 type image_op = Conv
 
-type var_type = Void | Bool | Int | UInt | Float | Histogram | Image
+type var_type = Void | Bool | Int | UInt | Float | Matrix3x3 | Histogram | Image
 type var_decl = { vname : string; vtype : var_type }
 
 type expr =
@@ -38,12 +38,12 @@ type row3 =
 type img_expr =
     Imop of string * image_op * string
   | In of string * channel list * expr list
-  | Immatrix3x3 of row3 * row3 * row3
   | Imassign of string * img_expr
 
 type var_init =
     Iminit of var_decl * img_expr
   | Vinit of var_decl * expr
+  | Immatrix3x3 of var_decl * row3 * row3 * row3
 
 type var_def = 
     VarDecl of var_decl
@@ -83,6 +83,7 @@ let string_of_vartype = function
   | Int -> "int"
   | UInt -> "unsigned int"
   | Float -> "float"
+  | Matrix3x3 -> "float"
   | Histogram -> "Histogram"
   | Image -> "Image"
 
@@ -132,16 +133,17 @@ let rec string_of_img_expr = function
     Imop(s, o, k) -> "conv(" ^ s ^ "' " ^ k ^ ");\n";
   | In (v, a, el) -> "in (" ^ string_of_channels a ^ ")\n{\n" ^ 
       String.concat ";\n" (List.map string_of_expr el) ^ ";}\n"
-  | Immatrix3x3(r1, r2, r3) -> "{" ^ string_of_row3 r1 ^ ", " 
-                                   ^ string_of_row3 r2 ^ ", " 
-							       ^ string_of_row3 r3 ^ "};\n"
   | Imassign(v, e) -> v ^ " = " ^ string_of_img_expr e
 
 let string_of_vdecl var = (string_of_vartype var.vtype) ^ " " ^ var.vname
 
 let string_of_vinit = function
-    Iminit(v, e) -> string_of_vdecl v ^ " = " ^ string_of_img_expr e ^ ";\n"
-  | Vinit(v, e) -> string_of_vdecl v ^ " = " ^ string_of_expr e ^ ";\n"
+    Iminit(v, e) -> string_of_vdecl v ^ " = " ^ string_of_img_expr e
+  | Vinit(v, e) -> string_of_vdecl v ^ " = " ^ string_of_expr e
+  | Immatrix3x3(v, r1, r2, r3) -> string_of_vdecl v ^ "[3][3] = " ^
+	                              "{" ^ string_of_row3 r1 ^ ", " 
+                                      ^ string_of_row3 r2 ^ ", " 
+							          ^ string_of_row3 r3 ^ "}"
 
 let string_of_vdef = function
     VarDecl(v) -> string_of_vdecl v ^ ";\n"
