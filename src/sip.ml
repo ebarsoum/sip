@@ -19,9 +19,9 @@ let main () =
     let program = Parser.program Scanner.token lexbuf in
     match action with
       Ast -> let listing = Ast.string_of_program program in
-               fwrite (out_name ^ ".ast") listing
+               fwrite ("./out/" ^ out_name ^ ".ast") listing
     | Compile -> let listing = Translate.translate_to_cc program in
-               fwrite (out_name ^ ".cpp") listing
+               Makefile.gen_makefile out_name; fwrite ("./out/" ^ out_name ^ ".cpp") listing
     | None -> print_string "None\n"
 
 let _ = main ()
