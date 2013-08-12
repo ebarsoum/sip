@@ -8,12 +8,15 @@ int main()
 {
     g_clProgram.CompileClFile("./template.cl");
 	
-	Image in;
+	Image in, out;
 	in.read("./blackbuck.bmp");
 
-    g_clProgram.RunKernel(in, in, "image_copy");
-	
-	in.write("./t1.bmp");
+    float filter[3][3] = {{0.11f, 0.11f, 0.11f}, {0.11f, 0.11f, 0.11f}, {0.11f, 0.11f, 0.11f}};
+    
+	//g_clProgram.RunKernel(in, out, "image_copy");
+
+    g_clProgram.ApplyFilter(in, out, (float*)&filter);
+    out.write("./t1.bmp");
 	
     return 0;
 }

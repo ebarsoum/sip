@@ -30,6 +30,7 @@ namespace Sip
 
         void CompileClFile(const char* filename);
         void RunKernel(Image& in_image, Image& out_image, const char* kernelName);
+        void ApplyFilter(Image& in_image, Image& out_image, float* filter);
 
     private:
         void Init();
@@ -46,11 +47,17 @@ namespace Sip
     class Image
     {
     public:
+		Image();
+		Image(const Image& img);
+
         int width();
         int height();
-        
+
+        void clone(Image& img);
+		
         RGBApixel* operator()(int i,int j);
-        
+        Image& operator=(Image &rhs);
+
         void read(const char* path);
         void write(const char* path);
 
