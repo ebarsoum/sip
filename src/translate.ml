@@ -13,7 +13,7 @@ module StringMap = Map.Make(String)
 (* Symbol table: Information about all the names in scope *)
 type env = {
     function_decl : string StringMap.t;   (* Signature for each function *)
-    global_var    : var_type StringMap.t; (* global variables and their types*)
+    global_var    : var_type StringMap.t; (* global variables and their types *)
     local_var     : var_type StringMap.t; (* locals + function params and their types *)
   }
 
@@ -22,6 +22,28 @@ let cc_headers = "#include \"sip.h\"\n"         ^
                  "using namespace Sip;\n\n"     ^
 			     "ClProgram g_clProgram;\n"     ^
 				 "Image g__sip_temp__;\n\n"
+
+(* Begining of the OpenCL header, and a generic function for 3x3 filter *)
+let cl_headers = 
+"__constant sampler_t sampler =  CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
+
+__kernel void apply_filter(__read_only image2d_t in_image, __write_only image2d_t out_image, __constant float* filter)
+{
+   const int2 pos = {get_global_id(0), get_global_id(1)};
+
+   float4 sum = (float4)(0.0f);
+   for (int y = -1; y <= 1; y++)
+   {
+       for (int x = -1; x <= 1; x++)
+       {
+           sum.x += filter[(y + 1) * 3 + (x + 1)] * read_imagef(in_image, sampler, pos + (int2)(x,y)).x;
+           sum.y += filter[(y + 1) * 3 + (x + 1)] * read_imagef(in_image, sampler, pos + (int2)(x,y)).y;
+           sum.z += filter[(y + 1) * 3 + (x + 1)] * read_imagef(in_image, sampler, pos + (int2)(x,y)).z;
+       }
+   }
+
+   write_imagef (out_image, (int2)(pos.x, pos.y), sum);
+}\n"
 
 (* Return a string represntation of function signature *)
 let fsig fdecl =
@@ -39,7 +61,7 @@ let vdecl_of_vdef = function
     VarDecl(v) -> (v.vtype, v.vname)
   | Varinit(vi) -> vdecl_of_vinit vi
 
-(* val enum : int -> 'a list -> (int * 'a) list *)
+(* Some helper enum based on MicroC enum with some minor modifications *)
 let rec enum_vdecl = function
     [] -> []
   | hd::tl -> (hd.vtype, hd.vname) :: enum_vdecl tl
@@ -102,6 +124,7 @@ let translate_to_cc (globals, functions) out_name =
   	  | Ques (e1, e2, e3) -> "(" ^ expr e1 ^ ") ? " ^
   	      expr e2 ^ ":" ^ expr e3
       | Bracket (e) -> "(" ^ expr e ^ ")"
+      | Imaccessor (i, r, c, a) -> i ^ "(" ^ expr r ^ "," ^ expr c ^ ")->" ^ a
       | Noexpr -> "")
 
    in let add_channels_var c =
@@ -127,7 +150,7 @@ let translate_to_cc (globals, functions) out_name =
 			  if ((StringMap.mem s env.local_var) || (StringMap.mem s env.global_var)) then begin
 			        if ((StringMap.mem k env.local_var) || (StringMap.mem k env.global_var)) then
 			           "g_clProgram.ApplyFilter(" ^ s ^ ", g__sip_temp__, (float*)&" ^ k ^ ");\n"
-					else raise (Failure ("undeclared variable " ^ k))
+					else "g_clProgram.RunKernel(" ^ s ^ ", g__sip_temp__,\"" ^ k ^ "\");\n"
 				end
 			 	else raise (Failure ("undeclared variable " ^ s))
 	    | In (v, a, el) -> ignore(add_channels_var a); (* To force the order, we need to add the variable before evluating the expr. *)
@@ -156,8 +179,8 @@ let translate_to_cc (globals, functions) out_name =
 	      stmt s1 ^ "else\n" ^ stmt s2
 	  | For(e1, e2, e3, s) ->
 	      "for (" ^ expr e1  ^ " ; " ^ expr e2 ^ " ; " ^
-	      expr e3  ^ ") " ^ stmt s
-	  | While(e, s) -> "while (" ^ expr e ^ ") " ^ stmt s
+	      expr e3  ^ ") \n{\n" ^ stmt s ^ "\n}"
+	  | While(e, s) -> "while (" ^ expr e ^ ") \n{\n" ^ stmt s ^ "\n}"
       | Break -> "break;\n"
 
     in let vartype = function
@@ -180,27 +203,30 @@ let translate_to_cc (globals, functions) out_name =
       | Histogram -> "Histogram&"
       | Image -> "Image&"
 	  
-  in (if ((String.compare fdecl.fname "main") == 0)
-      then "int main()\n{\n" ^ "    g_clProgram.CompileClFile(\"./" ^ out_name ^ ".cl\");\n\n"
-      else (vartype fdecl.freturn) ^ " " ^ fdecl.fname
-      ^ if ((List.length fdecl.fparams) != 0)
-        then ("("
-      ^ func_params_type (List.hd fdecl.fparams).vtype ^ " " ^ (List.hd fdecl.fparams).vname ^ " "
-      ^ String.concat "" (List.map (fun formal -> ", " ^ func_params_type formal.vtype ^ " " ^ formal.vname) (List.tl fdecl.fparams)) ^ ")\n{\n")
-        else "()\n{\n"
-        )
-      ^ String.concat "" (List.map Ast.string_of_vdef (List.rev fdecl.flocals)) ^ "\n"
-      ^ stmt (Block fdecl.fbody) ^ "\n" ^ 
-      if ((String.compare fdecl.fname "main") == 0)
-	  then "    return 0;\n}\n"
-      else "\n}\n"
-	  
+  in  if (fdecl.fgpu) then ""
+      else begin
+          (if ((String.compare fdecl.fname "main") == 0)
+          then "int main()\n{\n" ^ "    g_clProgram.CompileClFile(\"./" ^ out_name ^ ".cl\");\n\n"
+          else (vartype fdecl.freturn) ^ " " ^ fdecl.fname
+          ^ if ((List.length fdecl.fparams) != 0)
+            then ("("
+          ^ func_params_type (List.hd fdecl.fparams).vtype ^ " " ^ (List.hd fdecl.fparams).vname ^ " "
+          ^ String.concat "" (List.map (fun formal -> ", " ^ func_params_type formal.vtype ^ " " ^ formal.vname) (List.tl fdecl.fparams)) ^ ")\n{\n")
+            else "()\n{\n"
+            )
+          ^ String.concat "" (List.map Ast.string_of_vdef (List.rev fdecl.flocals)) ^ "\n"
+          ^ stmt (Block fdecl.fbody) ^ "\n" ^ 
+          if ((String.compare fdecl.fname "main") == 0)
+    	  then "    return 0;\n}\n"
+          else "\n}\n"
+      end
+
   in let env = { 
          function_decl = function_decls;
 		 global_var = global_variables;
 		 local_var = StringMap.empty } in
 
-  (* Code executed to start the program: Jsr main; halt *)
+  (* Code executed to start the program *)
   let _ = try
     (StringMap.find "main" function_decls)
   with Not_found -> raise (Failure ("no \"main\" function"))
@@ -212,23 +238,103 @@ let translate_to_cc (globals, functions) out_name =
 
 (* Translate the AST tree into a OpenCL shader program *)
 let translate_to_cl (globals, functions) out_name =
-	"__constant sampler_t sampler =  CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
 
-    __kernel void apply_filter(__read_only image2d_t in_image, __write_only image2d_t out_image, __constant float* filter)
-    {
-        const int2 pos = {get_global_id(0), get_global_id(1)};
+  (* Keep track of global variables *)
+  let function_decls = string_map_pairs StringMap.empty (enum_func functions) in
 
-        float4 sum = (float4)(0.0f);
-        for (int y = -1; y <= 1; y++)
-	    {
-            for (int x = -1; x <= 1; x++)
-		    {
-                sum.x += filter[(y + 1) * 3 + (x + 1)] * read_imagef(in_image, sampler, pos + (int2)(x,y)).x;
-                sum.y += filter[(y + 1) * 3 + (x + 1)] * read_imagef(in_image, sampler, pos + (int2)(x,y)).y;
-                sum.z += filter[(y + 1) * 3 + (x + 1)] * read_imagef(in_image, sampler, pos + (int2)(x,y)).z;
-            }
-       }
-	
-       write_imagef (out_image, (int2)(pos.x, pos.y), sum);
-    }\n"
+  (* Translate a function in AST form into a list of bytecode statements *)
+  let translate env fdecl =
+    (* Bookkeeping: FP offsets for locals and arguments *)
+    let local_var = enum_vdef fdecl.flocals
+    and formal_var = enum_vdecl fdecl.fparams in
+    let env = { env with local_var = string_map_pairs StringMap.empty (local_var @ formal_var) } in
 
+    let rec expr e = 
+	  (match e with
+      BoolLiteral(l) -> string_of_bool l
+      | IntLiteral(l) -> string_of_int l
+      | FloatLiteral(l) -> string_of_float l
+      | Id(s) -> 
+		  if (StringMap.mem s env.local_var)
+            then s
+			else raise (Failure ("undeclared variable " ^ s))
+      | Unop(o, e) ->
+          (match o with
+        Neg -> "-") ^ expr e
+      | Binop (e1, op, e2) -> 
+		  expr e1 ^ " " ^
+          (match op with
+	    Add -> "+" | Sub -> "-" | Mult -> "*" | Div -> "/" | Mod -> "%"
+          | Neq -> "!=" | Lt -> "<" | Leq -> "<=" | Gt -> ">" | Geq -> ">=" | Eq -> "=="
+          | And -> "&&" | Or -> "||" | Not -> "!"
+          | BitAnd -> "&" | BitOr -> "|" | BitNot -> "~") ^ " " ^
+          expr e2
+      | Assign (s, e) ->
+		  if (StringMap.mem s env.local_var)
+		    then s ^ " = " ^ expr e
+		 	else raise (Failure ("undeclared variable " ^ s))
+      | Call (fname, actuals) -> raise (Failure ("Function call aren't supported in Kernel function " ^ fname))
+  	  | Ques (e1, e2, e3) -> "(" ^ expr e1 ^ ") ? " ^
+  	      expr e2 ^ ":" ^ expr e3
+      | Bracket (e) -> "(" ^ expr e ^ ")"
+      | Imaccessor (i, r, c, a) -> "read_imagef(" ^ i ^ ", sampler, pos + (int2)(" ^ 
+                                   expr c ^ "," ^ expr r ^ "))." ^ 
+                                   (match a with
+                                       "Red" -> "x"
+                                     | "Green" -> "y"
+                                     | "Blue" -> "z"
+                                     | _ -> raise (Failure ("Invalid channel " ^ a)))
+      | Noexpr -> "")
+
+    in let img_expr = function
+	      Imop(s, o, k) -> raise (Failure ("Convolution operator is not supported in a kernel function."))
+	    | In (v, a, el) -> raise (Failure ("In operator is not supported in a kernel function."))
+        | Imassign(v, e) -> raise (Failure ("Image assignement is not supported in a kernel function."))
+
+    in let rec stmt = function
+	    Block(sl) -> 
+          String.concat "" (List.map stmt sl) ^ "\n"
+	  | Expr(e) -> expr e ^ ";\n";
+	  | Imexpr(imexpr) -> raise (Failure ("Image expression is not supported in a kernel function."))
+	  | Imread(i, p) -> raise (Failure ("Read operator is not supported in a kernel function."))
+	  | Imwrite(i, p) -> raise (Failure ("Write operator is not supported in a kernel function."))  
+	  | Return(e) -> "return " ^ expr e ^ ";\n";
+	  | If(e, s, Block([])) -> "if (" ^ expr e ^ ")\n" ^ stmt s
+      | If(e, s1, s2) ->  "if (" ^ expr e ^ ")\n" ^
+	      stmt s1 ^ "else\n" ^ stmt s2
+	  | For(e1, e2, e3, s) ->
+	      "for (" ^ expr e1  ^ " ; " ^ expr e2 ^ " ; " ^
+	      expr e3  ^ ") {\n" ^ stmt s ^ "\n}"
+	  | While(e, s) -> "while (" ^ expr e ^ ") " ^ "{\n" ^ stmt s ^ "\n}"
+      | Break -> "break;\n"
+
+    (* Return OpenCL specific type only *)
+    in let func_params_type = function
+        Image -> "image2d_t"
+      | _ -> raise (Failure ("Only image type is supported in a kernel function."))
+  
+  (* Translate only kernel function. *)
+  in  if (fdecl.fgpu) then begin
+      (if (fdecl.freturn != Void) then raise (Failure ("Kernel function can't return any value."))
+       else
+          "__kernel void " ^ fdecl.fname
+          ^ if ((List.length fdecl.fparams) != 2) then raise (Failure ("Kernel function must takes 2 image types as argument."))
+            else ("(__read_only "
+          ^ func_params_type (List.hd fdecl.fparams).vtype ^ " " ^ (List.hd fdecl.fparams).vname ^ " "
+          ^ String.concat "" (List.map (fun formal -> ", __write_only " ^ func_params_type formal.vtype ^ " " ^ formal.vname) (List.tl fdecl.fparams)) 
+          ^ ")\n{\n    const int2 pos = {get_global_id(0), get_global_id(1)};\n"
+          ^ String.concat "" (List.map Ast.string_of_vdef (List.rev fdecl.flocals)) ^ "\n"
+          ^ stmt (Block fdecl.fbody) ^ "\n" ^ "    float4 _out_ = {red_out, green_out, blue_out, 0.0f};\n" 
+          ^ "    write_imagef (" ^ (List.hd (List.tl fdecl.fparams)).vname
+          ^ ", (int2)(pos.x, pos.y), _out_);" ^ "\n}\n"))
+      end
+  else ""
+  
+  in let env = { 
+         function_decl = function_decls;
+		 global_var = StringMap.empty;
+		 local_var = StringMap.empty }
+
+  (* Compile the functions *)
+  in cl_headers ^
+	(String.concat "\n" (List.map (translate env) (List.rev functions))) ^ "\n"

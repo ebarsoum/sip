@@ -170,6 +170,7 @@ expr:
   | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
   | LPAREN expr RPAREN           { Bracket($2) }
   | expr QUES expr COLON expr    { Ques($1, $3, $5) }
+  | ID LBRACKET expr COMMA expr RBRACKET ARROW ID { Imaccessor($1, $3, $5, $8) }
 
 actuals_opt:
     /* nothing */ { [] }

@@ -27,6 +27,7 @@ type expr =
   | Call of string * expr list
   | Ques of expr * expr * expr
   | Bracket of expr
+  | Imaccessor of string * expr * expr * string
   | Noexpr
 
 type channel =
@@ -109,6 +110,7 @@ let rec string_of_expr = function
   | Ques (e1, e2, e3) -> "(" ^ string_of_expr e1 ^ ") ? " ^
       string_of_expr e2 ^ ":" ^ string_of_expr e3
   | Bracket (e) -> "(" ^ string_of_expr e ^ ")"
+  | Imaccessor (i, r, c, a) -> i ^ "(" ^ string_of_expr r ^ "," ^ string_of_expr c ^ ")->" ^ a
   | Noexpr -> ""
 
 let string_of_row3 = function
