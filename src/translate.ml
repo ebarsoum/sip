@@ -174,13 +174,13 @@ let translate_to_cc (globals, functions) out_name =
 	  | Imread(i, p) -> i ^ ".read(" ^ p ^ ");\n";
 	  | Imwrite(i, p) -> i ^ ".write(" ^ p ^ ");\n";  
 	  | Return(e) -> "return " ^ expr e ^ ";\n";
-	  | If(e, s, Block([])) -> "if (" ^ expr e ^ ")\n" ^ stmt s
-      | If(e, s1, s2) ->  "if (" ^ expr e ^ ")\n" ^
-	      stmt s1 ^ "else\n" ^ stmt s2
+	  | If(e, s, Block([])) -> "if (" ^ expr e ^ ")\n{\n" ^ stmt s ^ "}\n"
+      | If(e, s1, s2) ->  "if (" ^ expr e ^ ")\n{\n" ^
+	      stmt s1 ^ "}\nelse\n{\n" ^ stmt s2 ^ "}\n"
 	  | For(e1, e2, e3, s) ->
 	      "for (" ^ expr e1  ^ " ; " ^ expr e2 ^ " ; " ^
-	      expr e3  ^ ") \n{\n" ^ stmt s ^ "\n}"
-	  | While(e, s) -> "while (" ^ expr e ^ ") \n{\n" ^ stmt s ^ "\n}"
+	      expr e3  ^ ") \n{\n" ^ stmt s ^ "}\n"
+	  | While(e, s) -> "while (" ^ expr e ^ ") \n{\n" ^ stmt s ^ "}\n"
       | Break -> "break;\n"
 
     in let vartype = function
@@ -299,13 +299,13 @@ let translate_to_cl (globals, functions) out_name =
 	  | Imread(i, p) -> raise (Failure ("Read operator is not supported in a kernel function."))
 	  | Imwrite(i, p) -> raise (Failure ("Write operator is not supported in a kernel function."))  
 	  | Return(e) -> "return " ^ expr e ^ ";\n";
-	  | If(e, s, Block([])) -> "if (" ^ expr e ^ ")\n" ^ stmt s
-      | If(e, s1, s2) ->  "if (" ^ expr e ^ ")\n" ^
-	      stmt s1 ^ "else\n" ^ stmt s2
+	  | If(e, s, Block([])) -> "if (" ^ expr e ^ ")\n{\n" ^ stmt s ^ "}\n"
+      | If(e, s1, s2) ->  "if (" ^ expr e ^ ")\n{\n" ^
+	      stmt s1 ^ "}\nelse\n{\n" ^ stmt s2 ^ "}\n"
 	  | For(e1, e2, e3, s) ->
 	      "for (" ^ expr e1  ^ " ; " ^ expr e2 ^ " ; " ^
-	      expr e3  ^ ") {\n" ^ stmt s ^ "\n}"
-	  | While(e, s) -> "while (" ^ expr e ^ ") " ^ "{\n" ^ stmt s ^ "\n}"
+	      expr e3  ^ ") {\n" ^ stmt s ^ "}\n"
+	  | While(e, s) -> "while (" ^ expr e ^ ") " ^ "{\n" ^ stmt s ^ "}\n"
       | Break -> "break;\n"
 
     (* Return OpenCL specific type only *)
