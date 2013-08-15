@@ -70,7 +70,7 @@ vinit:
   | img_type ID ASSIGN LBRACKET row3 row3 row3 RBRACKET SEMI { Immatrix3x3({ vname = $2; vtype = Matrix3x3 }, $5, $6, $7) }
 
 row3:
-    LBRACKET FLITERAL FLITERAL FLITERAL RBRACKET  { Row($2, $3, $4) }
+    LBRACKET expr COMMA expr COMMA expr RBRACKET  { Row($2, $4, $6) }
 
 fdecl:
     FUN ID LPAREN formals_opt RPAREN ftype_opt LBRACE vdef_list stmt_list RBRACE

@@ -4,6 +4,6 @@ fun main()
   image im;
 
   im << "./blackbuck.bmp";
-  im >> "./blackbuck-copy.bmp";
+  im >> "./test-img-read-write.bmp";
 }
 

@@ -1,8 +1,13 @@
 (* 
-    sip.ml for SIP Compiler entry point
+    Columbia University
 
+    PLT 4115 Course - SIP Compiler Project
+
+    Under the Supervision of: Prof. Stephen A. Edwards
     Name: Emad Barsoum
     UNI: eb2871
+
+    sip.ml for SIP Compiler entry point
 *)
 
 open Printf
@@ -11,6 +16,7 @@ type action = Ast | Compile | TestCpp | TestOpenCL | Error
 
 let out_name = ref "a"
 
+(* Helper function that write "content" into a file named "name" *)
 let fwrite name content =
     let out = open_out name in
       fprintf out "%s\n" content;
@@ -19,10 +25,10 @@ let fwrite name content =
 (* Return filename without extension or path in Unix like system. *)
 let get_filename path =
     let i = (String.rindex path '/') in
-    String.sub path i ((String.length path) - i - 4)
+    String.sub path (i + 1) ((String.length path) - i - 5)
 
 let right_string = 
-    "             Columbia University\n\n" ^
+    "\n             Columbia University\n\n" ^
     "Simple Image Processing Compiler Version 1.0 Preview\n\n" ^
 	"Under the Supervision of: Prof. Stephen A. Edwards\n" ^
 	"Name: Emad Barsoum, UNI: eb2871\n\n"
@@ -46,7 +52,6 @@ let main () =
       with
 	    _ -> Error
     else Error in
-    try
         let lexbuf = print_string right_string;
 		             ignore(out_name := get_filename Sys.argv.(2)); 
                      Lexing.from_channel (open_in Sys.argv.(2)) in
@@ -64,7 +69,5 @@ let main () =
         | TestOpenCL -> let listing = Translate.translate_to_cl program !out_name in
                      print_endline listing
         | Error -> print_string usage_string
-    with
-      _ -> print_string usage_string
 
 let _ = main ()

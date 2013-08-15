@@ -1,7 +1,7 @@
 
 fun main() 
 { 
-  image filter = [[0.11 0.11 0.11] [0.11 0.11 0.11] [0.11 0.11 0.11]];
+  image filter = [[0.11, 0.11, 0.11] [0.11, 0.11, 0.11] [0.11, 0.11, 0.11]];
   image im1;
   image im2;
   
@@ -9,5 +9,5 @@ fun main()
   
   im2 = im1 ^ filter;
   
-  im2 >> "./blackbuck-blur.bmp";
+  im2 >> "./test-gpu-blur.bmp";
 }

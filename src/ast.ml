@@ -1,8 +1,13 @@
 (*
-    ast.ml for SIP language
+    Columbia University
 
+    PLT 4115 Course - SIP Compiler Project
+
+    Under the Supervision of: Prof. Stephen A. Edwards
     Name: Emad Barsoum
     UNI: eb2871
+
+    ast.ml for SIP language
 *)
 
 type binary_op = Add | Sub | Mult | Div | Mod | 
@@ -34,7 +39,7 @@ type channel =
     Channel of string * string
 
 type row3 = 
-    Row of float * float * float
+    Row of expr * expr * expr
 
 type img_expr =
     Imop of string * image_op * string
@@ -114,9 +119,9 @@ let rec string_of_expr = function
   | Noexpr -> ""
 
 let string_of_row3 = function
-    Row(v1, v2, v3) -> "{" ^ string_of_float v1 ^ ", " 
-	                       ^ string_of_float v2 ^ ", " 
-						   ^ string_of_float v3 ^ "}"
+    Row(e1, e2, e3) -> "{" ^ string_of_expr e1 ^ ", " 
+	                       ^ string_of_expr e2 ^ ", " 
+						   ^ string_of_expr e3 ^ "}"
 
 let get_channel = function
     Channel(_, c) -> c

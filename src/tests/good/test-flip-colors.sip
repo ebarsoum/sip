@@ -8,5 +8,5 @@ fun main()
   
   im2 = im1 in (red, green, blue) for {red: green, green: blue, blue: red};
   
-  im2 >> "./test2.bmp";
+  im2 >> "./test-flip-colors.bmp";
 }

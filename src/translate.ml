@@ -1,8 +1,13 @@
 (*
-    translate.ml for SIP language
+    Columbia University
 
+    PLT 4115 Course - SIP Compiler Project
+
+    Under the Supervision of: Prof. Stephen A. Edwards
     Name: Emad Barsoum
     UNI: eb2871
+
+    translate.ml for SIP language
 *)
 
 open Ast
