@@ -52,8 +52,7 @@ let main () =
       with
 	    _ -> Error
     else Error in
-        let lexbuf = print_string right_string;
-		             ignore(out_name := get_filename Sys.argv.(2)); 
+        let lexbuf = ignore(out_name := get_filename Sys.argv.(2)); 
                      Lexing.from_channel (open_in Sys.argv.(2)) in
         let program = Parser.program Scanner.token lexbuf in
         match action with

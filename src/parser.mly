@@ -1,4 +1,15 @@
-%{ open Ast %}
+%{(*
+    Columbia University
+
+    PLT 4115 Course - SIP Compiler Project
+
+    Under the Supervision of: Prof. Stephen A. Edwards
+    Name: Emad Barsoum
+    UNI: eb2871
+
+    parser.mly for SIP language
+*)
+open Ast %}
 
 %token READ WRITE 
 %token PLUS MINUS TIMES DIVIDES MOD CONV ASSIGN

@@ -13,7 +13,7 @@ globalerror=0
 keep=0
 
 Usage() {
-    echo "Usage: testall.sh [options] [.mc files]"
+    echo "Usage: testall.sh [options] [.sip files]"
     echo "-k    Keep intermediate files"
     echo "-h    Print this help"
     exit 1
@@ -62,13 +62,13 @@ Check() {
 
     generatedfiles=""
 
-    generatedfiles="$generatedfiles ${basename}.i.out" &&
-    Run "$SIPC" "-i" "<" $1 ">" ${basename}.i.out &&
-    Compare ${basename}.i.out ${reffile}.out ${basename}.i.diff
+    generatedfiles="$generatedfiles ${basename}.cpp.out" &&
+    Run "$SIPC" "-tcc" $1 ">" ${basename}.cpp.out &&
+    Compare ${basename}.cpp.out ${reffile}.cppout.cpp ${basename}.cpp.diff
 
-    generatedfiles="$generatedfiles ${basename}.c.out" &&
-    Run "$SIPC" "-c" "<" $1 ">" ${basename}.c.out &&
-    Compare ${basename}.c.out ${reffile}.out ${basename}.c.diff
+    generatedfiles="$generatedfiles ${basename}.cl.out" &&
+    Run "$SIPC" "-tcl" $1 ">" ${basename}.cl.out &&
+    Compare ${basename}.cl.out ${reffile}.clout.cl ${basename}.cl.diff
 
     # Report the status and clean up the generated files
 
@@ -101,7 +101,7 @@ if [ $# -ge 1 ]
 then
     files=$@
 else
-    files="tests/fail-*.mc tests/test-*.mc"
+    files="tests/good/test-*.sip"
 fi
 
 for file in $files
