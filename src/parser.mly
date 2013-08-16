@@ -183,7 +183,8 @@ expr:
   | LPAREN expr RPAREN           { Bracket($2) }
   | expr QUES expr COLON expr    { Ques($1, $3, $5) }
   | ID LBRACKET expr COMMA expr RBRACKET ARROW ID { Imaccessor($1, $3, $5, $8) }
-
+  | ID ARROW ID                  { Accessor($1, $3) }
+  
 actuals_opt:
     /* nothing */ { [] }
   | actuals_list  { List.rev $1 }

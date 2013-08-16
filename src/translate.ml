@@ -135,6 +135,13 @@ let translate_to_cc (globals, functions) out_name =
   	      expr e2 ^ ":" ^ expr e3
       | Bracket (e) -> "(" ^ expr e ^ ")"
       | Imaccessor (i, r, c, a) -> i ^ "(" ^ expr r ^ "," ^ expr c ^ ")->" ^ a
+      | Accessor (i, a) -> 
+		  if ((StringMap.mem i env.local_var) || (StringMap.mem i env.global_var) || (StringMap.mem i !dynamic_var))
+            then i ^ "." ^ (match a with
+                              "Width" -> "width()"
+                            | "Height" -> "height()"
+                            | _ -> raise (Failure ("Invalid attribute " ^ a)))
+		 	else raise (Failure ("undeclared variable " ^ i))
       | Noexpr -> "")
 
    in let add_channels_var c =
@@ -295,6 +302,7 @@ let translate_to_cl (globals, functions) out_name =
                                      | "Green" -> "y"
                                      | "Blue" -> "z"
                                      | _ -> raise (Failure ("Invalid channel " ^ a)))
+      | Accessor(i, a) -> raise (Failure ("Accessor is not supported in a kernel function."))
       | Noexpr -> "")
 
     in let img_expr = function
