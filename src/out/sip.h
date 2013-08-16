@@ -1,3 +1,15 @@
+/*
+    Columbia University
+
+    PLT 4115 Course - SIP Compiler Project
+
+    Under the Supervision of: Prof. Stephen A. Edwards
+    Name: Emad Barsoum
+    UNI: eb2871
+
+    sip.h
+*/
+
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,6 +66,11 @@ namespace Sip
         int height();
 
         void clone(Image& img);
+        void copyRangeTo(unsigned int offsetX,
+		                 unsigned int offsetY,
+		                 unsigned int width,
+		                 unsigned int height,
+		                 Image& img);
 		
         RGBApixel* operator()(int i,int j);
         Image& operator=(Image &rhs);
@@ -66,8 +83,18 @@ namespace Sip
     };
 
     class Histogram
-    {};
-
+    {
+	public:
+		Histogram();
+		Histogram(Image& img);
+		
+		unsigned int operator()(int bin, int color);
+        		
+	private:
+		unsigned int _red[256];
+		unsigned int _green[256];
+		unsigned int _blue[256];
+	};
 }
 
 #endif

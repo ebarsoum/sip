@@ -158,6 +158,7 @@ expr:
     BLITERAL                     { BoolLiteral($1) }
   | ILITERAL                     { IntLiteral($1) }
   | FLITERAL                     { FloatLiteral($1) }
+  | SLITERAL                     { StringLiteral($1) }
   | ID                           { Id($1) }
   | expr PLUS   expr             { Binop($1, Add,   $3) }
   | expr MINUS  expr             { Binop($1, Sub,   $3) }

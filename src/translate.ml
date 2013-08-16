@@ -92,7 +92,6 @@ let translate_to_cc (globals, functions) out_name =
 
   (* Translate a function in AST form into a list of bytecode statements *)
   let translate env fdecl =
-    (* Bookkeeping: FP offsets for locals and arguments *)
     let local_var = enum_vdef fdecl.flocals
     and formal_var = enum_vdecl fdecl.fparams in
     let env = { env with local_var = string_map_pairs StringMap.empty (local_var @ formal_var) } in
@@ -103,6 +102,7 @@ let translate_to_cc (globals, functions) out_name =
       BoolLiteral(l) -> string_of_bool l
       | IntLiteral(l) -> string_of_int l
       | FloatLiteral(l) -> string_of_float l
+      | StringLiteral(l) -> l      
       | Id(s) -> 
 		  if ((StringMap.mem s env.local_var) || (StringMap.mem s env.global_var) || (StringMap.mem s !dynamic_var))
             then s
@@ -125,7 +125,12 @@ let translate_to_cc (globals, functions) out_name =
       | Call (fname, actuals) -> 
 		  if (StringMap.mem fname env.function_decl)
 		    then fname ^ "(" ^ String.concat ", " (List.map expr (List.rev actuals)) ^ ")"
-		 	else raise (Failure ("undefined function " ^ fname))
+		 	else (if ((String.compare fname "writeln") == 0) then
+                (if ((List.length actuals) == 1) then
+                    "std::cout << " ^ expr (List.hd actuals) ^ " << std::endl"
+                else raise (Failure ("writeln takes only one argument")))
+            else
+                raise (Failure ("undefined function " ^ fname)))
   	  | Ques (e1, e2, e3) -> "(" ^ expr e1 ^ ") ? " ^
   	      expr e2 ^ ":" ^ expr e3
       | Bracket (e) -> "(" ^ expr e ^ ")"
@@ -259,6 +264,7 @@ let translate_to_cl (globals, functions) out_name =
       BoolLiteral(l) -> string_of_bool l
       | IntLiteral(l) -> string_of_int l
       | FloatLiteral(l) -> string_of_float l
+      | StringLiteral(l) -> l
       | Id(s) -> 
 		  if (StringMap.mem s env.local_var)
             then s

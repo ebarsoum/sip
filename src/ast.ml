@@ -25,6 +25,7 @@ type expr =
     BoolLiteral of bool
   | IntLiteral of int
   | FloatLiteral of float
+  | StringLiteral of string
   | Id of string
   | Unop of unary_op * expr
   | Binop of expr * binary_op * expr
@@ -97,6 +98,7 @@ let rec string_of_expr = function
     BoolLiteral(l) -> string_of_bool l
   | IntLiteral(l) -> string_of_int l
   | FloatLiteral(l) -> string_of_float l
+  | StringLiteral(l) -> l
   | Id(s) -> s
   | Unop(o, e) ->
       (match o with
