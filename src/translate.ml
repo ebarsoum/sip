@@ -182,6 +182,11 @@ let translate_to_cc (globals, functions) out_name =
 			"        g__sip_temp__(row, col)->Alpha = " ^ v ^ "(row, col)->Alpha;\n" ^
 			"    }\n}\n"
         | Imassign(v, e) -> img_expr e ^ "\n" ^ v ^ " = g__sip_temp__;\n"
+        | Imrange(v, x, y, w, h) -> v ^ ".copyRangeTo(" ^ string_of_int x ^ ", " ^
+                                                          string_of_int y ^ ", " ^
+                                                          string_of_int w ^ ", " ^
+                                                          string_of_int h ^ ", " ^
+                                                          "g__sip_temp__);"
 
     in let rec stmt = function
 	    Block(sl) -> 
@@ -259,9 +264,8 @@ let translate_to_cl (globals, functions) out_name =
   (* Keep track of global variables *)
   let function_decls = string_map_pairs StringMap.empty (enum_func functions) in
 
-  (* Translate a function in AST form into a list of bytecode statements *)
+  (* Translate a function in AST form into a C++ statements *)
   let translate env fdecl =
-    (* Bookkeeping: FP offsets for locals and arguments *)
     let local_var = enum_vdef fdecl.flocals
     and formal_var = enum_vdecl fdecl.fparams in
     let env = { env with local_var = string_map_pairs StringMap.empty (local_var @ formal_var) } in
@@ -304,11 +308,6 @@ let translate_to_cl (globals, functions) out_name =
                                      | _ -> raise (Failure ("Invalid channel " ^ a)))
       | Accessor(i, a) -> raise (Failure ("Accessor is not supported in a kernel function."))
       | Noexpr -> "")
-
-    in let img_expr = function
-	      Imop(s, o, k) -> raise (Failure ("Convolution operator is not supported in a kernel function."))
-	    | In (v, a, el) -> raise (Failure ("In operator is not supported in a kernel function."))
-        | Imassign(v, e) -> raise (Failure ("Image assignement is not supported in a kernel function."))
 
     in let rec stmt = function
 	    Block(sl) -> 

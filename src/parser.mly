@@ -149,6 +149,7 @@ img_expr:
       { In($1, [Channel($1,$4); Channel($1,$6); Channel($1,$8)], [Assign($12 ^ "_out", $14); Assign($16 ^ "_out", $18); Assign($20 ^ "_out", $22)]) }
   | ID CONV ID SEMI    { Imop($1, Conv, $3) }
   | ID ASSIGN img_expr { Imassign($1, $3) }
+  | ID LBRACKET ILITERAL RANGE ILITERAL SEMI ILITERAL RANGE ILITERAL RBRACKET SEMI { Imrange($1, $3, $7, $5, $9) }
 
 expr_opt:
     /* nothing */ { Noexpr }

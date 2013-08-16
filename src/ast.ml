@@ -47,6 +47,7 @@ type img_expr =
     Imop of string * image_op * string
   | In of string * channel list * expr list
   | Imassign of string * img_expr
+  | Imrange of string * int * int * int * int
 
 type var_init =
     Iminit of var_decl * img_expr
@@ -145,6 +146,10 @@ let rec string_of_img_expr = function
   | In (v, a, el) -> "in (" ^ string_of_channels a ^ ")\n{\n" ^ 
       String.concat ";\n" (List.map string_of_expr el) ^ ";}\n"
   | Imassign(v, e) -> v ^ " = " ^ string_of_img_expr e
+  | Imrange(v, x, y, w, h) -> v ^ "->range(" ^ string_of_int x ^ ", " ^
+                                  string_of_int y ^ ", " ^
+                                  string_of_int w ^ ", " ^
+                                  string_of_int h ^ ")"
 
 let string_of_vdecl var = (string_of_vartype var.vtype) ^ " " ^ var.vname
 
