@@ -1,3 +1,15 @@
+/*
+    Columbia University
+
+    PLT 4115 Course - SIP Compiler Project
+
+    Under the Supervision of: Prof. Stephen A. Edwards
+    Name: Emad Barsoum
+    UNI: eb2871
+
+    sip.cpp
+*/
+
 #include "sip.h"
 
 using namespace Sip;
@@ -399,6 +411,34 @@ void Image::clone(Image& img)
 	_image.SetBitDepth(img._image.TellBitDepth());
 }
 
+void Image::copyRangeTo(unsigned int offsetX,
+                        unsigned int offsetY,
+                        unsigned int width,
+                        unsigned int height,
+                        Image& img)
+{
+    if (((offsetX + width) > (unsigned int)_image.TellWidth()) ||
+        ((offsetY + height) > (unsigned int)_image.TellHeight()))
+    {
+        cout << "Invalid image range..." << endl;
+        return;
+    }
+        
+	img._image.SetSize(width, height);
+	img._image.SetBitDepth(_image.TellBitDepth());
+    
+    for (size_t row = 0; row < height; ++row)
+    {
+        for (size_t col = 0; col < width; ++col)
+        {
+            img(row, col)->Red   = _image(offsetY + row, offsetX + col)->Red;
+            img(row, col)->Green = _image(offsetY + row, offsetX + col)->Green;
+            img(row, col)->Blue  = _image(offsetY + row, offsetX + col)->Blue;
+            img(row, col)->Alpha = _image(offsetY + row, offsetX + col)->Alpha;
+        }
+    }
+}
+
 RGBApixel* Image::operator()(int i,int j)
 {
     return _image(i, j);
@@ -425,4 +465,51 @@ Image& Image::operator=(Image &rhs)
     }
 
     return *this;
+}
+
+Histogram::Histogram()
+{
+    memset((void*)_red, 0, sizeof(_red));
+    memset((void*)_green, 0, sizeof(_green));
+    memset((void*)_blue, 0, sizeof(_blue));
+}
+
+Histogram::Histogram(Image& img)
+{
+    memset((void*)_red, 0, sizeof(_red));
+    memset((void*)_green, 0, sizeof(_green));
+    memset((void*)_blue, 0, sizeof(_blue));
+
+    for (int row = 0; row < img.height(); ++row)
+    {
+        for (int col = 0; col < img.width(); ++col)
+        {
+            _red[img(row, col)->Red]++;
+            _green[img(row, col)->Green]++;
+            _blue[img(row, col)->Blue]++;
+        }
+    }
+}
+
+unsigned int Histogram::operator()(int bin, int color)
+{
+    if ((bin < 0) || (bin >= 256) || (color < 0) || (color > 2))
+    {
+        cout << "Invalid argument..." << endl;
+        return 0;   
+    }
+
+    switch (color)
+    {
+        case 0:
+        return _red[bin];
+
+        case 1:
+        return _green[bin];
+
+        case 2:
+        return _blue[bin];
+    }
+    
+    return 0;
 }

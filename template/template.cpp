@@ -15,6 +15,9 @@ int main()
     
 	//g_clProgram.RunKernel(in, out, "image_copy");
 
+    Histogram hist = in;
+	cout << hist(128, 1) << endl;
+	
     g_clProgram.ApplyFilter(in, out, (float*)&filter);
     out.write("./t1.bmp");
 	
